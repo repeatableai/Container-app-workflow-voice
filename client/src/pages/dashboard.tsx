@@ -340,6 +340,7 @@ export default function Dashboard() {
         open={showImportModal}
         onOpenChange={setShowImportModal}
         type="single"
+        activeTab={activeTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['/api/containers'] });
           queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
@@ -350,6 +351,7 @@ export default function Dashboard() {
         open={showMassImportModal}
         onOpenChange={setShowMassImportModal}
         type="mass"
+        activeTab={activeTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['/api/containers'] });
           queryClient.invalidateQueries({ queryKey: ['/api/stats'] });

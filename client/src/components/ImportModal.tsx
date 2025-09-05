@@ -12,10 +12,11 @@ interface ImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   type: 'single' | 'mass';
+  activeTab?: 'app' | 'voice' | 'workflow';
   onSuccess: () => void;
 }
 
-export default function ImportModal({ open, onOpenChange, type, onSuccess }: ImportModalProps) {
+export default function ImportModal({ open, onOpenChange, type, activeTab = 'app', onSuccess }: ImportModalProps) {
   const { toast } = useToast();
   const [importType, setImportType] = useState<'file' | 'url' | 'json'>('file');
   const [isImporting, setIsImporting] = useState(false);
@@ -120,12 +121,14 @@ export default function ImportModal({ open, onOpenChange, type, onSuccess }: Imp
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {type === 'mass' ? 'Mass Import Containers' : 'Import Container'}
+            {type === 'mass' 
+              ? `Mass Import ${activeTab === 'app' ? 'Apps' : activeTab === 'voice' ? 'AI Voices' : 'Workflows'}` 
+              : `Import ${activeTab === 'app' ? 'App' : activeTab === 'voice' ? 'AI Voice' : 'Workflow'}`}
           </DialogTitle>
           <p className="text-sm text-muted-foreground">
             {type === 'mass' 
-              ? 'Import multiple containers at once from various sources'
-              : 'Import a single container from a file, URL, or JSON data'
+              ? `Import multiple ${activeTab === 'app' ? 'apps' : activeTab === 'voice' ? 'AI voices' : 'workflows'} at once from various sources`
+              : `Import a single ${activeTab === 'app' ? 'app' : activeTab === 'voice' ? 'AI voice' : 'workflow'} from a file, URL, or JSON data`
             }
           </p>
         </DialogHeader>
