@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, Download } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ImportModalProps {
   open: boolean;
@@ -24,19 +25,58 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   const handleFileImport = async (file: File) => {
     setIsImporting(true);
     try {
-      // Simulate file processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const fileContent = await file.text();
+      let containersData = [];
+      
+      if (file.name.endsWith('.json')) {
+        const jsonData = JSON.parse(fileContent);
+        containersData = Array.isArray(jsonData) ? jsonData : (jsonData.containers || [jsonData]);
+      } else if (file.name.endsWith('.csv')) {
+        // Simple CSV parsing - assumes first row is headers
+        const lines = fileContent.split('\n').filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim());
+        containersData = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim());
+          const container: any = {};
+          headers.forEach((header, index) => {
+            container[header] = values[index] || '';
+          });
+          return container;
+        });
+      }
+      
+      // Create containers via API
+      let createdCount = 0;
+      for (const containerData of containersData) {
+        try {
+          const containerToCreate = {
+            title: containerData.title || containerData.name || 'Imported Container',
+            description: containerData.description || '',
+            type: activeTab,
+            industry: containerData.industry || '',
+            department: containerData.department || '',
+            visibility: containerData.visibility || 'public',
+            tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+            ...containerData
+          };
+          
+          await apiRequest('POST', '/api/containers', containerToCreate);
+          createdCount++;
+        } catch (error) {
+          console.warn('Failed to create container:', containerData, error);
+        }
+      }
       
       toast({
         title: "Success",
-        description: `${type === 'mass' ? 'Mass import' : 'Import'} completed successfully`,
+        description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
       });
       onSuccess();
       onOpenChange(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Import failed. Please try again.",
+        description: "Import failed. Please check your file format and try again.",
         variant: "destructive",
       });
     } finally {
@@ -47,12 +87,39 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   const handleURLImport = async (url: string) => {
     setIsImporting(true);
     try {
-      // Simulate URL processing
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch from URL');
+      }
+      
+      const data = await response.json();
+      const containersData = Array.isArray(data) ? data : (data.containers || [data]);
+      
+      // Create containers via API
+      let createdCount = 0;
+      for (const containerData of containersData) {
+        try {
+          const containerToCreate = {
+            title: containerData.title || containerData.name || 'Imported Container',
+            description: containerData.description || '',
+            type: activeTab,
+            industry: containerData.industry || '',
+            department: containerData.department || '',
+            visibility: containerData.visibility || 'public',
+            tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+            ...containerData
+          };
+          
+          await apiRequest('POST', '/api/containers', containerToCreate);
+          createdCount++;
+        } catch (error) {
+          console.warn('Failed to create container:', containerData, error);
+        }
+      }
       
       toast({
         title: "Success",
-        description: "Container imported from URL successfully",
+        description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
       });
       onSuccess();
       onOpenChange(false);
@@ -70,14 +137,34 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   const handleJSONImport = async (jsonData: string) => {
     setIsImporting(true);
     try {
-      JSON.parse(jsonData); // Validate JSON
+      const parsedData = JSON.parse(jsonData);
+      const containersData = Array.isArray(parsedData) ? parsedData : (parsedData.containers || [parsedData]);
       
-      // Simulate JSON processing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create containers via API
+      let createdCount = 0;
+      for (const containerData of containersData) {
+        try {
+          const containerToCreate = {
+            title: containerData.title || containerData.name || 'Imported Container',
+            description: containerData.description || '',
+            type: activeTab,
+            industry: containerData.industry || '',
+            department: containerData.department || '',
+            visibility: containerData.visibility || 'public',
+            tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+            ...containerData
+          };
+          
+          await apiRequest('POST', '/api/containers', containerToCreate);
+          createdCount++;
+        } catch (error) {
+          console.warn('Failed to create container:', containerData, error);
+        }
+      }
       
       toast({
         title: "Success",
-        description: "Containers imported from JSON successfully",
+        description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
       });
       onSuccess();
       onOpenChange(false);
@@ -93,16 +180,17 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   };
 
   const downloadTemplate = () => {
+    const containerType = activeTab === 'app' ? 'Application' : activeTab === 'voice' ? 'AI Voice' : 'Workflow';
     const template = {
       containers: [
         {
-          title: "Example Container",
-          description: "This is an example container",
-          type: "app",
+          title: `Example ${containerType}`,
+          description: `This is an example ${activeTab} container`,
+          type: activeTab,
           industry: "Technology",
           department: "Engineering",
           visibility: "public",
-          tags: ["example", "template"]
+          tags: ["example", "template", activeTab]
         }
       ]
     };
@@ -111,7 +199,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'container-template.json';
+    a.download = `${activeTab}-template.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
