@@ -81,7 +81,7 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
                 data-testid="user-menu-trigger"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.profileImageUrl} />
+                  <AvatarImage src={user?.profileImageUrl || undefined} />
                   <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium text-foreground">

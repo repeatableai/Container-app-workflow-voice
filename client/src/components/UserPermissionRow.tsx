@@ -60,7 +60,7 @@ export default function UserPermissionRow({
     >
       <div className="flex items-center space-x-3">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={user.profileImageUrl} />
+          <AvatarImage src={user.profileImageUrl || undefined} />
           <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
         </Avatar>
         <div>

@@ -91,7 +91,7 @@ export class DatabaseStorage implements IStorage {
     userId?: string;
   }): Promise<Container[]> {
     let query = db.select().from(containers);
-    const conditions = [];
+    const conditions: any[] = [];
 
     if (filters?.type) {
       conditions.push(eq(containers.type, filters.type as any));
@@ -116,7 +116,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+      query = query.where(and(...conditions)) as any;
     }
 
     return await query.orderBy(desc(containers.createdAt));

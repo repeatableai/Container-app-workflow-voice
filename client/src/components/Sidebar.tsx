@@ -58,14 +58,16 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
 
   const handleFilterChange = (category: string, value: string, checked: boolean) => {
     const newFilters = { ...filters };
+    const categoryKey = category as keyof Pick<typeof filters, 'industries' | 'departments' | 'containerTypes' | 'accessLevels'>;
+    
     if (checked) {
-      newFilters[category as keyof typeof filters] = [
-        ...(newFilters[category as keyof typeof filters] as string[]),
+      newFilters[categoryKey] = [
+        ...(newFilters[categoryKey]),
         value
       ];
     } else {
-      newFilters[category as keyof typeof filters] = (
-        newFilters[category as keyof typeof filters] as string[]
+      newFilters[categoryKey] = (
+        newFilters[categoryKey]
       ).filter(item => item !== value);
     }
     onFiltersChange(newFilters);

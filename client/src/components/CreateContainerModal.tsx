@@ -157,7 +157,8 @@ export default function CreateContainerModal({ open, onOpenChange, onSuccess }: 
                     <Textarea 
                       placeholder="Enter container description"
                       rows={3}
-                      {...field} 
+                      {...field}
+                      value={field.value || ''}
                       data-testid="create-description-input"
                     />
                   </FormControl>
@@ -176,7 +177,8 @@ export default function CreateContainerModal({ open, onOpenChange, onSuccess }: 
                     <FormControl>
                       <Input 
                         placeholder="e.g., Technology, Healthcare"
-                        {...field} 
+                        {...field}
+                        value={field.value || ''}
                         data-testid="create-industry-input"
                       />
                     </FormControl>
@@ -194,7 +196,8 @@ export default function CreateContainerModal({ open, onOpenChange, onSuccess }: 
                     <FormControl>
                       <Input 
                         placeholder="e.g., Engineering, Marketing"
-                        {...field} 
+                        {...field}
+                        value={field.value || ''}
                         data-testid="create-department-input"
                       />
                     </FormControl>
