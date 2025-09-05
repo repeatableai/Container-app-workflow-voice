@@ -62,7 +62,7 @@ export const containers = pgTable("containers", {
 // User permissions table for granular access control
 export const userPermissions = pgTable("user_permissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull().unique(),
   canAccessApps: boolean("can_access_apps").default(true),
   canAccessVoices: boolean("can_access_voices").default(true), 
   canAccessWorkflows: boolean("can_access_workflows").default(true),
