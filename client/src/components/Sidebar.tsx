@@ -13,14 +13,16 @@ interface SidebarProps {
     savedOnly: boolean;
   };
   onFiltersChange: (filters: any) => void;
+  activeTab?: 'app' | 'voice' | 'workflow';
 }
 
-export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
+export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }: SidebarProps) {
   const [expandedSections, setExpandedSections] = useState({
     industries: true,
     departments: true,
     containerTypes: true,
     accessLevels: true,
+    categories: true,
   });
 
   // Fetch filter options
@@ -34,11 +36,62 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
     retry: false,
   });
 
-  const containerTypes = [
-    { id: 'app', label: 'Web Resource' },
-    { id: 'voice', label: 'Voice Model' },
-    { id: 'workflow', label: 'Workflow' },
-  ];
+  // Dynamic filter categories based on active tab
+  const getFilterCategories = () => {
+    switch (activeTab) {
+      case 'app':
+        return {
+          types: [
+            { id: 'web', label: 'Web Application' },
+            { id: 'mobile', label: 'Mobile App' },
+            { id: 'desktop', label: 'Desktop Software' },
+            { id: 'api', label: 'API Service' },
+          ],
+          categories: [
+            { id: 'productivity', label: 'Productivity' },
+            { id: 'communication', label: 'Communication' },
+            { id: 'analytics', label: 'Analytics' },
+            { id: 'security', label: 'Security' },
+          ]
+        };
+      case 'voice':
+        return {
+          types: [
+            { id: 'male', label: 'Male Voice' },
+            { id: 'female', label: 'Female Voice' },
+            { id: 'neutral', label: 'Neutral Voice' },
+          ],
+          categories: [
+            { id: 'professional', label: 'Professional' },
+            { id: 'casual', label: 'Casual' },
+            { id: 'robotic', label: 'Robotic' },
+            { id: 'emotional', label: 'Emotional' },
+          ]
+        };
+      case 'workflow':
+        return {
+          types: [
+            { id: 'automation', label: 'Automation' },
+            { id: 'integration', label: 'Integration' },
+            { id: 'notification', label: 'Notification' },
+            { id: 'approval', label: 'Approval Process' },
+          ],
+          categories: [
+            { id: 'data-processing', label: 'Data Processing' },
+            { id: 'communication', label: 'Communication' },
+            { id: 'monitoring', label: 'Monitoring' },
+            { id: 'reporting', label: 'Reporting' },
+          ]
+        };
+      default:
+        return {
+          types: [],
+          categories: []
+        };
+    }
+  };
+
+  const filterCategories = getFilterCategories();
 
   const accessLevels = [
     { id: 'public', label: 'Public' },
@@ -88,7 +141,9 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
     <aside className="w-64 bg-card border-r border-border flex-shrink-0">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-semibold text-foreground">Filters</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {activeTab === 'app' ? 'App Filters' : activeTab === 'voice' ? 'Voice Filters' : 'Workflow Filters'}
+          </h3>
           <Button 
             variant="ghost" 
             size="sm"
@@ -187,18 +242,20 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
               )}
             </div>
 
-            {/* Container Types */}
+            {/* Dynamic Types */}
             <div className="space-y-3">
               <button 
                 className="flex items-center justify-between w-full text-left"
                 onClick={() => toggleSection('containerTypes')}
               >
-                <h4 className="text-sm font-medium text-foreground">Container Types</h4>
+                <h4 className="text-sm font-medium text-foreground">
+                  {activeTab === 'app' ? 'App Type' : activeTab === 'voice' ? 'Voice Type' : 'Workflow Type'}
+                </h4>
                 <i className={`fas fa-chevron-${expandedSections.containerTypes ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
               </button>
               {expandedSections.containerTypes && (
                 <div className="space-y-2">
-                  {containerTypes.map((type) => (
+                  {filterCategories.types.map((type: { id: string; label: string }) => (
                     <div key={type.id} className="flex items-center space-x-2">
                       <Checkbox 
                         id={`type-${type.id}`}
@@ -211,6 +268,39 @@ export default function Sidebar({ filters, onFiltersChange }: SidebarProps) {
                         className="text-sm text-muted-foreground cursor-pointer"
                       >
                         {type.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic Categories */}
+            <div className="space-y-3">
+              <button 
+                className="flex items-center justify-between w-full text-left"
+                onClick={() => toggleSection('categories')}
+              >
+                <h4 className="text-sm font-medium text-foreground">
+                  {activeTab === 'app' ? 'Categories' : activeTab === 'voice' ? 'Voice Style' : 'Process Type'}
+                </h4>
+                <i className={`fas ${expandedSections.categories ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs text-muted-foreground`}></i>
+              </button>
+              {expandedSections.categories && (
+                <div className="space-y-2">
+                  {filterCategories.categories.map((category: { id: string; label: string }) => (
+                    <div key={category.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category.id}`}
+                        checked={filters.containerTypes.includes(category.id)}
+                        onCheckedChange={(checked) => handleFilterChange('containerTypes', category.id, !!checked)}
+                        data-testid={`filter-category-${category.id}`}
+                      />
+                      <label 
+                        htmlFor={`category-${category.id}`} 
+                        className="text-sm text-muted-foreground cursor-pointer"
+                      >
+                        {category.label}
                       </label>
                     </div>
                   ))}

@@ -17,13 +17,14 @@ interface CreateContainerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  activeTab?: 'app' | 'voice' | 'workflow';
 }
 
 const formSchema = insertContainerSchema.extend({
   tags: insertContainerSchema.shape.tags.optional(),
 });
 
-export default function CreateContainerModal({ open, onOpenChange, onSuccess }: CreateContainerModalProps) {
+export default function CreateContainerModal({ open, onOpenChange, onSuccess, activeTab = 'app' }: CreateContainerModalProps) {
   const { toast } = useToast();
   const [tagInput, setTagInput] = useState("");
 
@@ -47,7 +48,7 @@ export default function CreateContainerModal({ open, onOpenChange, onSuccess }: 
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Container created successfully",
+        description: `${activeTab === 'app' ? 'App' : activeTab === 'voice' ? 'AI Voice' : 'Workflow'} created successfully`,
       });
       onSuccess();
       onOpenChange(false);
@@ -99,7 +100,9 @@ export default function CreateContainerModal({ open, onOpenChange, onSuccess }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Container</DialogTitle>
+          <DialogTitle>
+            Create New {activeTab === 'app' ? 'App' : activeTab === 'voice' ? 'AI Voice' : 'Workflow'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>

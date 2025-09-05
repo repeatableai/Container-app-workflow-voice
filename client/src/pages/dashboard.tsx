@@ -134,6 +134,7 @@ export default function Dashboard() {
         <Sidebar 
           filters={filters}
           onFiltersChange={setFilters}
+          activeTab={activeTab}
         />
         
         <main className="flex-1 overflow-auto">
@@ -328,6 +329,7 @@ export default function Dashboard() {
       <CreateContainerModal 
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
+        activeTab={activeTab}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['/api/containers'] });
           queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
