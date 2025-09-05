@@ -3,14 +3,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
 import AppCard from "@/components/AppCard";
 import VoiceCard from "@/components/VoiceCard";
 import WorkflowCard from "@/components/WorkflowCard";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Grid, List, ShoppingCart, Package } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Grid, List, Package } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Container } from "@shared/schema";
+import type { Container, ContainerStats } from "@shared/schema";
 
 export default function Library() {
   const { toast } = useToast();
@@ -19,7 +20,6 @@ export default function Library() {
   
   const [activeTab, setActiveTab] = useState<'app' | 'voice' | 'workflow'>('app');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filters, setFilters] = useState({
     industries: [] as string[],
     departments: [] as string[],
@@ -27,6 +27,8 @@ export default function Library() {
     accessLevels: [] as string[],
     savedOnly: false,
   });
+  const [sortBy, setSortBy] = useState('Recently Added');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -50,6 +52,13 @@ export default function Library() {
     retry: false,
   });
 
+  // Fetch statistics
+  const { data: stats } = useQuery<ContainerStats>({
+    queryKey: ['/api/stats'],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+
   const handleTabChange = (tab: 'app' | 'voice' | 'workflow') => {
     setActiveTab(tab);
   };
@@ -60,6 +69,7 @@ export default function Library() {
         method: 'POST',
         credentials: 'include',
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
     } catch (error) {
       // Silently fail for view tracking
     }
@@ -82,22 +92,6 @@ export default function Library() {
     }
   };
 
-  // Filter containers by search query
-  const filterContainersBySearch = (containers: Container[]) => {
-    if (!searchQuery.trim()) return containers;
-    return containers.filter(container =>
-      container.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.industry?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.department?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
-
-  // Filter containers by type
-  const apps = containers.filter(c => c.type === 'app');
-  const voices = containers.filter(c => c.type === 'voice');
-  const workflows = containers.filter(c => c.type === 'workflow');
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -113,21 +107,96 @@ export default function Library() {
         onSearchChange={setSearchQuery}
       />
       
-      <main className="container mx-auto px-6 py-8">
-          {/* Library Header */}
-          <div className="mb-8">
+      <div className="flex h-screen">
+        <Sidebar 
+          filters={filters}
+          onFiltersChange={setFilters}
+          activeTab={activeTab}
+        />
+        
+        <main className="flex-1 overflow-auto">
+          {/* Tab Navigation */}
+          <div className="bg-white dark:bg-gray-900 border-b border-border sticky top-0 z-40 backdrop-blur-lg shadow-sm">
+            <div className="flex space-x-8 px-6">
+              <button 
+                className={`py-4 px-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'app' 
+                    ? 'tab-active border-primary text-primary' 
+                    : 'border-transparent hover:text-primary text-muted-foreground'
+                }`}
+                onClick={() => handleTabChange('app')}
+                data-testid="tab-apps"
+              >
+                <i className="fas fa-cube mr-2"></i>
+                App Marketplace
+                <span className="ml-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded-full">
+                  {stats?.apps || 0}
+                </span>
+              </button>
+              <button 
+                className={`py-4 px-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'voice' 
+                    ? 'tab-active border-primary text-primary' 
+                    : 'border-transparent hover:text-primary text-muted-foreground'
+                }`}
+                onClick={() => handleTabChange('voice')}
+                data-testid="tab-voices"
+              >
+                <i className="fas fa-microphone mr-2"></i>
+                Voice Studio
+                <span className="ml-2 px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                  {stats?.voices || 0}
+                </span>
+              </button>
+              <button 
+                className={`py-4 px-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'workflow' 
+                    ? 'tab-active border-primary text-primary' 
+                    : 'border-transparent hover:text-primary text-muted-foreground'
+                }`}
+                onClick={() => handleTabChange('workflow')}
+                data-testid="tab-workflows"
+              >
+                <i className="fas fa-project-diagram mr-2"></i>
+                Automation Hub
+                <span className="ml-2 px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">
+                  {stats?.workflows || 0}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Content Header */}
+          <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2 flex items-center">
-                  <Package className="w-8 h-8 mr-3 text-primary" />
-                  Container Library
+                <h1 className="text-2xl font-bold text-foreground flex items-center">
+                  <Package className="w-6 h-6 mr-2 text-primary" />
+                  {activeTab === 'app' && 'App Marketplace'}
+                  {activeTab === 'voice' && 'Voice Studio'}
+                  {activeTab === 'workflow' && 'Automation Hub'}
                 </h1>
-                <p className="text-lg text-muted-foreground">
-                  Browse and add containers to your organization
+                <p className="text-muted-foreground">
+                  {activeTab === 'app' && 'Discover and add powerful applications to your organization'}
+                  {activeTab === 'voice' && 'Browse premium AI voices for your projects'}
+                  {activeTab === 'workflow' && 'Streamline your processes with ready-made workflows'}
                 </p>
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Sort Dropdown */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Recently Added">Recently Added</SelectItem>
+                    <SelectItem value="Most Popular">Most Popular</SelectItem>
+                    <SelectItem value="Alphabetical">Alphabetical</SelectItem>
+                    <SelectItem value="Most Viewed">Most Viewed</SelectItem>
+                  </SelectContent>
+                </Select>
+                
                 {/* View Mode Toggle */}
                 <div className="flex items-center border rounded-md">
                   <Button 
@@ -151,143 +220,70 @@ export default function Library() {
                 </div>
               </div>
             </div>
+
+            {/* Container Content */}
+            {containersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-muted-foreground">Loading containers...</div>
+              </div>
+            ) : containers.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-4xl text-muted-foreground mb-4">📦</div>
+                <h3 className="text-lg font-medium text-foreground mb-2">No Containers Found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery ? `No ${activeTab}s match your search criteria.` : `No ${activeTab}s are currently available in the library.`}
+                </p>
+              </div>
+            ) : (
+              <div className={viewMode === 'grid' 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                : "space-y-4"
+              }>
+                {containers.map((container) => {
+                  // Render different card types based on container type
+                  if (container.type === 'app') {
+                    return (
+                      <AppCard 
+                        key={container.id}
+                        container={container}
+                        onView={handleContainerView}
+                        onDelete={() => {}}
+                        canDelete={false}
+                        data-testid={`app-card-${container.id}`}
+                      />
+                    );
+                  }
+                  if (container.type === 'voice') {
+                    return (
+                      <VoiceCard 
+                        key={container.id}
+                        container={container}
+                        onView={handleContainerView}
+                        onDelete={() => {}}
+                        canDelete={false}
+                        data-testid={`voice-card-${container.id}`}
+                      />
+                    );
+                  }
+                  if (container.type === 'workflow') {
+                    return (
+                      <WorkflowCard 
+                        key={container.id}
+                        container={container}
+                        onView={handleContainerView}
+                        onDelete={() => {}}
+                        canDelete={false}
+                        data-testid={`workflow-card-${container.id}`}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            )}
           </div>
-
-          {/* Container Tabs */}
-          <Tabs value={activeTab} onValueChange={(value) => handleTabChange(value as 'app' | 'voice' | 'workflow')} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="app" data-testid="tab-apps">
-                <i className="fas fa-cube mr-2"></i>
-                App Marketplace ({apps.length})
-              </TabsTrigger>
-              <TabsTrigger value="voice" data-testid="tab-voices">
-                <i className="fas fa-microphone mr-2"></i>
-                Voice Studio ({voices.length})
-              </TabsTrigger>
-              <TabsTrigger value="workflow" data-testid="tab-workflows">
-                <i className="fas fa-project-diagram mr-2"></i>
-                Automation Hub ({workflows.length})
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Apps Tab */}
-            <TabsContent value="app" className="mt-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground mb-2">App Marketplace</h2>
-                <p className="text-muted-foreground">Discover and add powerful applications to your organization</p>
-              </div>
-              
-              {containersLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-muted-foreground">Loading applications...</div>
-                </div>
-              ) : filterContainersBySearch(apps).length === 0 ? (
-                <div className="text-center py-12">
-                  <i className="fas fa-cube text-4xl text-muted-foreground mb-4"></i>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Applications Found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery ? "No applications match your search criteria." : "No applications are currently available in the marketplace."}
-                  </p>
-                </div>
-              ) : (
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
-                  {filterContainersBySearch(apps).map((container) => (
-                    <AppCard 
-                      key={container.id}
-                      container={container}
-                      onView={handleContainerView}
-                      onDelete={() => {}}
-                      canDelete={false}
-
-                      data-testid={`app-card-${container.id}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Voices Tab */}
-            <TabsContent value="voice" className="mt-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground mb-2">Voice Studio</h2>
-                <p className="text-muted-foreground">Browse premium AI voices for your projects</p>
-              </div>
-              
-              {containersLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-muted-foreground">Loading voices...</div>
-                </div>
-              ) : filterContainersBySearch(voices).length === 0 ? (
-                <div className="text-center py-12">
-                  <i className="fas fa-microphone text-4xl text-muted-foreground mb-4"></i>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Voices Found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery ? "No voices match your search criteria." : "No AI voices are currently available in the studio."}
-                  </p>
-                </div>
-              ) : (
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
-                  {filterContainersBySearch(voices).map((container) => (
-                    <VoiceCard 
-                      key={container.id}
-                      container={container}
-                      onView={handleContainerView}
-                      onDelete={() => {}}
-                      canDelete={false}
-
-                      data-testid={`voice-card-${container.id}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Workflows Tab */}
-            <TabsContent value="workflow" className="mt-6">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold text-foreground mb-2">Automation Hub</h2>
-                <p className="text-muted-foreground">Streamline your processes with ready-made workflows</p>
-              </div>
-              
-              {containersLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-muted-foreground">Loading workflows...</div>
-                </div>
-              ) : filterContainersBySearch(workflows).length === 0 ? (
-                <div className="text-center py-12">
-                  <i className="fas fa-project-diagram text-4xl text-muted-foreground mb-4"></i>
-                  <h3 className="text-lg font-medium text-foreground mb-2">No Workflows Found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {searchQuery ? "No workflows match your search criteria." : "No automation workflows are currently available in the hub."}
-                  </p>
-                </div>
-              ) : (
-                <div className={viewMode === 'grid' 
-                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                  : "space-y-4"
-                }>
-                  {filterContainersBySearch(workflows).map((container) => (
-                    <WorkflowCard 
-                      key={container.id}
-                      container={container}
-                      onView={handleContainerView}
-                      onDelete={() => {}}
-                      canDelete={false}
-
-                      data-testid={`workflow-card-${container.id}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
         </main>
+      </div>
     </div>
   );
 }
