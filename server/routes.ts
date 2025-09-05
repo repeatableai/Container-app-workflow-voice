@@ -77,10 +77,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Only admins can create containers
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: "Only admins can create containers" });
-      }
 
       const containerData = insertContainerSchema.parse({
         ...req.body,
