@@ -8,7 +8,6 @@ import AppCard from "@/components/AppCard";
 import VoiceCard from "@/components/VoiceCard";
 import WorkflowCard from "@/components/WorkflowCard";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Grid, List, Settings } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Container, ContainerStats } from "@shared/schema";
@@ -37,19 +36,60 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch company's assigned containers
+  // Fetch company's assigned containers, fallback to all containers if no company
   const { data: containers = [], isLoading: containersLoading } = useQuery<Container[]>({
     queryKey: ['/api/company/containers', searchQuery],
     enabled: isAuthenticated,
+    retry: (failureCount, error: any) => {
+      // If company containers fail, try regular containers
+      if (error?.message?.includes('not associated with a company')) {
+        return false; // Don't retry, we'll use the fallback below
+      }
+      return failureCount < 3;
+    },
+  });
+
+  // Fallback to regular containers if company containers fail
+  const { data: fallbackContainers = [] } = useQuery<Container[]>({
+    queryKey: ['/api/containers', searchQuery],
+    enabled: isAuthenticated && containers.length === 0 && !containersLoading,
     retry: false,
   });
 
-  // Fetch company statistics
+  // Use company containers if available, otherwise use fallback
+  const displayContainers = containers.length > 0 ? containers : fallbackContainers;
+
+  // Filter containers by search query
+  const filterContainersBySearch = (containers: Container[]) => {
+    if (!searchQuery.trim()) return containers;
+    return containers.filter(container =>
+      container.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      container.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      container.industry?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      container.department?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  // Fetch company statistics, fallback to regular stats
   const { data: stats } = useQuery<ContainerStats>({
     queryKey: ['/api/company/stats'],
     enabled: isAuthenticated,
+    retry: (failureCount, error: any) => {
+      if (error?.message?.includes('not associated with a company')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+
+  // Fallback stats
+  const { data: fallbackStats } = useQuery<ContainerStats>({
+    queryKey: ['/api/stats'],
+    enabled: isAuthenticated && !stats,
     retry: false,
   });
+
+  const displayStats = stats || fallbackStats;
 
   const handleContainerView = async (id: string) => {
     try {
@@ -63,21 +103,8 @@ export default function Home() {
     }
   };
 
-  // Filter containers by type
-  const apps = containers.filter(c => c.type === 'app');
-  const voices = containers.filter(c => c.type === 'voice');
-  const workflows = containers.filter(c => c.type === 'workflow');
-
-  // Filter containers by search query
-  const filterContainersBySearch = (containers: Container[]) => {
-    if (!searchQuery.trim()) return containers;
-    return containers.filter(container =>
-      container.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.industry?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      container.department?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  };
+  // Filter and sort all containers
+  const allFilteredContainers = filterContainersBySearch(displayContainers);
 
   if (isLoading) {
     return (
@@ -143,140 +170,81 @@ export default function Home() {
           </div>
 
           {/* Statistics Cards */}
-          <StatisticsCards stats={stats} />
+          <StatisticsCards stats={displayStats} />
         </div>
 
-        {/* Container Tabs */}
-        <Tabs defaultValue="apps" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="apps" data-testid="tab-apps">
-              <i className="fas fa-cube mr-2"></i>
-              Apps ({apps.length})
-            </TabsTrigger>
-            <TabsTrigger value="voices" data-testid="tab-voices">
-              <i className="fas fa-microphone mr-2"></i>
-              AI Voices ({voices.length})
-            </TabsTrigger>
-            <TabsTrigger value="workflows" data-testid="tab-workflows">
-              <i className="fas fa-project-diagram mr-2"></i>
-              Workflows ({workflows.length})
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Apps Tab */}
-          <TabsContent value="apps" className="mt-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-foreground mb-2">Your Applications</h2>
-              <p className="text-muted-foreground">Launch and access your organization's applications</p>
+        {/* All Containers Mixed View */}
+        <div className="w-full">
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Your Containers</h2>
+            <p className="text-muted-foreground">All your organization's apps, voices, and workflows in one place</p>
+          </div>
+          
+          {containersLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading containers...</div>
             </div>
-            
-            {containersLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading applications...</div>
-              </div>
-            ) : filterContainersBySearch(apps).length === 0 ? (
-              <div className="text-center py-12">
-                <i className="fas fa-cube text-4xl text-muted-foreground mb-4"></i>
-                <h3 className="text-lg font-medium text-foreground mb-2">No Applications Available</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchQuery ? "No applications match your search criteria." : "No applications have been assigned to your organization yet."}
-                </p>
-              </div>
-            ) : (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                : "space-y-4"
-              }>
-                {filterContainersBySearch(apps).map((container) => (
-                  <AppCard 
-                    key={container.id}
-                    container={container}
-                    onView={handleContainerView}
-                    onDelete={() => {}} // No-op function since users can't delete company containers
-                    canDelete={false}
-                    data-testid={`app-card-${container.id}`}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Voices Tab */}
-          <TabsContent value="voices" className="mt-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-foreground mb-2">AI Voice Library</h2>
-              <p className="text-muted-foreground">Browse and use your organization's AI voices</p>
+          ) : allFilteredContainers.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl text-muted-foreground mb-4">📦</div>
+              <h3 className="text-lg font-medium text-foreground mb-2">No Containers Available</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchQuery ? "No containers match your search criteria." : "No containers have been assigned to your organization yet."}
+              </p>
+              <Link href="/library">
+                <Button variant="outline" data-testid="browse-library-button">
+                  Browse Library
+                </Button>
+              </Link>
             </div>
-            
-            {containersLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading voices...</div>
-              </div>
-            ) : filterContainersBySearch(voices).length === 0 ? (
-              <div className="text-center py-12">
-                <i className="fas fa-microphone text-4xl text-muted-foreground mb-4"></i>
-                <h3 className="text-lg font-medium text-foreground mb-2">No AI Voices Available</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchQuery ? "No voices match your search criteria." : "No AI voices have been assigned to your organization yet."}
-                </p>
-              </div>
-            ) : (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                : "space-y-4"
-              }>
-                {filterContainersBySearch(voices).map((container) => (
-                  <VoiceCard 
-                    key={container.id}
-                    container={container}
-                    onView={handleContainerView}
-                    onDelete={() => {}} // No-op function since users can't delete company containers
-                    canDelete={false}
-                    data-testid={`voice-card-${container.id}`}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Workflows Tab */}
-          <TabsContent value="workflows" className="mt-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-foreground mb-2">Automation Workflows</h2>
-              <p className="text-muted-foreground">Execute and monitor your organization's automated processes</p>
+          ) : (
+            <div className={viewMode === 'grid' 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+              : "space-y-4"
+            }>
+              {allFilteredContainers.map((container) => {
+                // Render different card types based on container type
+                if (container.type === 'app') {
+                  return (
+                    <AppCard 
+                      key={container.id}
+                      container={container}
+                      onView={handleContainerView}
+                      onDelete={() => {}}
+                      canDelete={false}
+                      data-testid={`app-card-${container.id}`}
+                    />
+                  );
+                }
+                if (container.type === 'voice') {
+                  return (
+                    <VoiceCard 
+                      key={container.id}
+                      container={container}
+                      onView={handleContainerView}
+                      onDelete={() => {}}
+                      canDelete={false}
+                      data-testid={`voice-card-${container.id}`}
+                    />
+                  );
+                }
+                if (container.type === 'workflow') {
+                  return (
+                    <WorkflowCard 
+                      key={container.id}
+                      container={container}
+                      onView={handleContainerView}
+                      onDelete={() => {}}
+                      canDelete={false}
+                      data-testid={`workflow-card-${container.id}`}
+                    />
+                  );
+                }
+                return null;
+              })}
             </div>
-            
-            {containersLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground">Loading workflows...</div>
-              </div>
-            ) : filterContainersBySearch(workflows).length === 0 ? (
-              <div className="text-center py-12">
-                <i className="fas fa-project-diagram text-4xl text-muted-foreground mb-4"></i>
-                <h3 className="text-lg font-medium text-foreground mb-2">No Workflows Available</h3>
-                <p className="text-muted-foreground mb-4">
-                  {searchQuery ? "No workflows match your search criteria." : "No workflows have been assigned to your organization yet."}
-                </p>
-              </div>
-            ) : (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
-                : "space-y-4"
-              }>
-                {filterContainersBySearch(workflows).map((container) => (
-                  <WorkflowCard 
-                    key={container.id}
-                    container={container}
-                    onView={handleContainerView}
-                    onDelete={() => {}} // No-op function since users can't delete company containers
-                    canDelete={false}
-                    data-testid={`workflow-card-${container.id}`}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </main>
     </div>
   );

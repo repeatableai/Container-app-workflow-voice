@@ -60,6 +60,11 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
                 Home
               </span>
             </Link>
+            <Link href="/library">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                Library
+              </span>
+            </Link>
             {user?.role === 'admin' && (
               <Link href="/dashboard">
                 <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -69,7 +74,7 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
             )}
             {user?.role === 'admin' && (
               <Link href="/admin">
-                <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                <span className="text-sm font-medium text-muted-foreground transition-colors cursor-pointer">
                   Admin
                 </span>
               </Link>
