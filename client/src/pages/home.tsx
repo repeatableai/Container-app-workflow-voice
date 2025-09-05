@@ -170,7 +170,7 @@ export default function Home() {
               </div>
 
               {/* Admin/Management Links */}
-              <Link href="/dashboard">
+              <Link href="/admin">
                 <Button variant="outline" size="sm" data-testid="manage-button">
                   <Settings className="w-4 h-4 mr-2" />
                   Manage
