@@ -20,6 +20,7 @@ export default function Home() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'app' | 'voice' | 'workflow'>('all');
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -103,8 +104,19 @@ export default function Home() {
     }
   };
 
-  // Filter and sort all containers
-  const allFilteredContainers = filterContainersBySearch(displayContainers);
+  // Filter containers by search and type
+  const filteredContainers = filterContainersBySearch(displayContainers);
+  const allFilteredContainers = typeFilter === 'all' 
+    ? filteredContainers 
+    : filteredContainers.filter(container => container.type === typeFilter);
+
+  // Count containers by type for filter buttons
+  const containerCounts = {
+    all: filteredContainers.length,
+    app: filteredContainers.filter(c => c.type === 'app').length,
+    voice: filteredContainers.filter(c => c.type === 'voice').length,
+    workflow: filteredContainers.filter(c => c.type === 'workflow').length,
+  };
 
   if (isLoading) {
     return (
@@ -171,6 +183,48 @@ export default function Home() {
 
           {/* Statistics Cards */}
           <StatisticsCards stats={displayStats} />
+          
+          {/* Container Type Filter */}
+          <div className="flex items-center space-x-2 mb-6">
+            <span className="text-sm font-medium text-muted-foreground mr-2">Filter by type:</span>
+            <div className="flex items-center space-x-1">
+              <Button 
+                variant={typeFilter === 'all' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setTypeFilter('all')}
+                data-testid="filter-all"
+              >
+                All ({containerCounts.all})
+              </Button>
+              <Button 
+                variant={typeFilter === 'app' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setTypeFilter('app')}
+                data-testid="filter-apps"
+              >
+                <i className="fas fa-cube mr-1"></i>
+                Apps ({containerCounts.app})
+              </Button>
+              <Button 
+                variant={typeFilter === 'voice' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setTypeFilter('voice')}
+                data-testid="filter-voices"
+              >
+                <i className="fas fa-microphone mr-1"></i>
+                Voices ({containerCounts.voice})
+              </Button>
+              <Button 
+                variant={typeFilter === 'workflow' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setTypeFilter('workflow')}
+                data-testid="filter-workflows"
+              >
+                <i className="fas fa-project-diagram mr-1"></i>
+                Workflows ({containerCounts.workflow})
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* All Containers Mixed View */}
@@ -189,7 +243,9 @@ export default function Home() {
               <div className="text-4xl text-muted-foreground mb-4">📦</div>
               <h3 className="text-lg font-medium text-foreground mb-2">No Containers Available</h3>
               <p className="text-muted-foreground mb-4">
-                {searchQuery ? "No containers match your search criteria." : "No containers have been assigned to your organization yet."}
+                {searchQuery || typeFilter !== 'all' 
+                  ? `No containers match your ${typeFilter !== 'all' ? typeFilter + ' ' : ''}${searchQuery ? 'search ' : ''}criteria.` 
+                  : "No containers have been assigned to your organization yet."}
               </p>
               <Link href="/library">
                 <Button variant="outline" data-testid="browse-library-button">
