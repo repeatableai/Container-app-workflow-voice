@@ -157,8 +157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
+      if (!user || (user.role !== 'admin' && user.role !== 'viewer')) {
+        return res.status(403).json({ message: "Admin or Viewer access required" });
       }
 
       const users = await storage.getAllUsers();
