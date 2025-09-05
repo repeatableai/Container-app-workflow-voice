@@ -117,7 +117,7 @@ export default function ImportModal({ open, onOpenChange, type, onSuccess }: Imp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {type === 'mass' ? 'Mass Import Containers' : 'Import Container'}
@@ -182,6 +182,7 @@ export default function ImportModal({ open, onOpenChange, type, onSuccess }: Imp
               <Label>Container URL</Label>
               <Input
                 placeholder="https://example.com/container.json"
+                className="break-all"
                 data-testid="url-input"
               />
               <p className="text-xs text-muted-foreground">
@@ -208,7 +209,7 @@ export default function ImportModal({ open, onOpenChange, type, onSuccess }: Imp
               <Textarea
                 placeholder="Paste your JSON container data here..."
                 rows={10}
-                className="font-mono text-sm"
+                className="font-mono text-sm resize-none overflow-auto"
                 data-testid="json-input"
               />
             </div>

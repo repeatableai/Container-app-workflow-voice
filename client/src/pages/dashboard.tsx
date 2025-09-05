@@ -6,6 +6,9 @@ import Header from "@/components/Header";
 import Sidebar from "@/components/Sidebar";
 import StatisticsCards from "@/components/StatisticsCards";
 import ContainerCard from "@/components/ContainerCard";
+import AppCard from "@/components/AppCard";
+import VoiceCard from "@/components/VoiceCard";
+import WorkflowCard from "@/components/WorkflowCard";
 import CreateContainerModal from "@/components/CreateContainerModal";
 import ImportModal from "@/components/ImportModal";
 import { Button } from "@/components/ui/button";
@@ -190,8 +193,16 @@ export default function Dashboard() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground mb-2">Container Library</h1>
-                  <p className="text-muted-foreground">Discover and organize content by industry and department</p>
+                  <h1 className="text-2xl font-bold text-foreground mb-2">
+                    {activeTab === 'app' && 'App Marketplace'}
+                    {activeTab === 'voice' && 'AI Voice Studio'}
+                    {activeTab === 'workflow' && 'Workflow Hub'}
+                  </h1>
+                  <p className="text-muted-foreground">
+                    {activeTab === 'app' && 'Discover and install applications for your organization'}
+                    {activeTab === 'voice' && 'Browse and preview AI voices for your projects'}
+                    {activeTab === 'workflow' && 'Manage and execute automated business processes'}
+                  </p>
                 </div>
                 
                 <div className="flex items-center space-x-3">
@@ -230,7 +241,7 @@ export default function Dashboard() {
                     data-testid="button-create-new"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create New
+                    Create New {activeTab === 'app' ? 'App' : activeTab === 'voice' ? 'Voice' : 'Workflow'}
                   </Button>
                 </div>
               </div>
@@ -248,21 +259,52 @@ export default function Dashboard() {
                 <div className="text-muted-foreground mb-4">No containers found</div>
                 <Button onClick={() => setShowCreateModal(true)}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Container
+                  Create Your First {activeTab === 'app' ? 'App' : activeTab === 'voice' ? 'Voice' : 'Workflow'}
                 </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {containers
                   .filter(container => container.type === activeTab)
-                  .map((container) => (
-                    <ContainerCard 
-                      key={container.id}
-                      container={container}
-                      onDelete={handleContainerDelete}
-                      onView={handleContainerView}
-                    />
-                  ))}
+                  .map((container) => {
+                    if (activeTab === 'app') {
+                      return (
+                        <AppCard 
+                          key={container.id}
+                          container={container}
+                          onDelete={handleContainerDelete}
+                          onView={handleContainerView}
+                        />
+                      );
+                    } else if (activeTab === 'voice') {
+                      return (
+                        <VoiceCard 
+                          key={container.id}
+                          container={container}
+                          onDelete={handleContainerDelete}
+                          onView={handleContainerView}
+                        />
+                      );
+                    } else if (activeTab === 'workflow') {
+                      return (
+                        <WorkflowCard 
+                          key={container.id}
+                          container={container}
+                          onDelete={handleContainerDelete}
+                          onView={handleContainerView}
+                        />
+                      );
+                    }
+                    // Fallback to generic card
+                    return (
+                      <ContainerCard 
+                        key={container.id}
+                        container={container}
+                        onDelete={handleContainerDelete}
+                        onView={handleContainerView}
+                      />
+                    );
+                  })}
               </div>
             )}
 
