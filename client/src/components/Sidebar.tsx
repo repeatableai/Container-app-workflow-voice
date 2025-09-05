@@ -23,6 +23,7 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
     containerTypes: true,
     accessLevels: true,
     categories: true,
+    useCases: true,
   });
 
   // Fetch filter options
@@ -57,15 +58,25 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
       case 'voice':
         return {
           types: [
-            { id: 'male', label: 'Male Voice' },
-            { id: 'female', label: 'Female Voice' },
-            { id: 'neutral', label: 'Neutral Voice' },
+            { id: 'healthcare', label: 'Healthcare' },
+            { id: 'finance', label: 'Finance' },
+            { id: 'education', label: 'Education' },
+            { id: 'retail', label: 'Retail' },
+            { id: 'technology', label: 'Technology' },
           ],
           categories: [
-            { id: 'professional', label: 'Professional' },
-            { id: 'casual', label: 'Casual' },
-            { id: 'robotic', label: 'Robotic' },
-            { id: 'emotional', label: 'Emotional' },
+            { id: 'sales', label: 'Sales' },
+            { id: 'marketing', label: 'Marketing' },
+            { id: 'support', label: 'Customer Support' },
+            { id: 'training', label: 'Training' },
+            { id: 'hr', label: 'Human Resources' },
+          ],
+          useCases: [
+            { id: 'ivr', label: 'IVR Systems' },
+            { id: 'narration', label: 'Content Narration' },
+            { id: 'assistants', label: 'Virtual Assistants' },
+            { id: 'announcements', label: 'Announcements' },
+            { id: 'elearning', label: 'E-Learning' },
           ]
         };
       case 'workflow':
@@ -249,7 +260,7 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                 onClick={() => toggleSection('containerTypes')}
               >
                 <h4 className="text-sm font-medium text-foreground">
-                  {activeTab === 'app' ? 'App Type' : activeTab === 'voice' ? 'Voice Type' : 'Workflow Type'}
+                  {activeTab === 'app' ? 'App Type' : activeTab === 'voice' ? 'Industry' : 'Workflow Type'}
                 </h4>
                 <i className={`fas fa-chevron-${expandedSections.containerTypes ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
               </button>
@@ -282,7 +293,7 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                 onClick={() => toggleSection('categories')}
               >
                 <h4 className="text-sm font-medium text-foreground">
-                  {activeTab === 'app' ? 'Categories' : activeTab === 'voice' ? 'Voice Style' : 'Process Type'}
+                  {activeTab === 'app' ? 'Categories' : activeTab === 'voice' ? 'Department' : 'Process Type'}
                 </h4>
                 <i className={`fas ${expandedSections.categories ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs text-muted-foreground`}></i>
               </button>
@@ -307,6 +318,39 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                 </div>
               )}
             </div>
+
+            {/* Use Case Section for Voice */}
+            {activeTab === 'voice' && (
+              <div className="space-y-3">
+                <button 
+                  className="flex items-center justify-between w-full text-left"
+                  onClick={() => toggleSection('useCases')}
+                >
+                  <h4 className="text-sm font-medium text-foreground">Use Case</h4>
+                  <i className={`fas ${expandedSections.useCases ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs text-muted-foreground`}></i>
+                </button>
+                {expandedSections.useCases && (
+                  <div className="space-y-2">
+                    {filterCategories.useCases?.map((useCase: { id: string; label: string }) => (
+                      <div key={useCase.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`usecase-${useCase.id}`}
+                          checked={filters.containerTypes.includes(useCase.id)}
+                          onCheckedChange={(checked) => handleFilterChange('containerTypes', useCase.id, !!checked)}
+                          data-testid={`filter-usecase-${useCase.id}`}
+                        />
+                        <label 
+                          htmlFor={`usecase-${useCase.id}`} 
+                          className="text-sm text-muted-foreground cursor-pointer"
+                        >
+                          {useCase.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Access Levels */}
             <div className="space-y-3">
