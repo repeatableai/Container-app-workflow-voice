@@ -41,7 +41,7 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-900 border-b border-border sticky top-0 z-50 backdrop-blur-lg shadow-sm">
       <div className="flex items-center justify-between px-6 py-3">
         <div className="flex items-center space-x-4">
           <Link href="/">

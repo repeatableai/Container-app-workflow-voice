@@ -138,7 +138,7 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
   };
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex-shrink-0">
+    <aside className="w-64 bg-white dark:bg-gray-900 border-r border-border flex-shrink-0">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-semibold text-foreground">

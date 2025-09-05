@@ -139,7 +139,7 @@ export default function Dashboard() {
         
         <main className="flex-1 overflow-auto">
           {/* Tab Navigation */}
-          <div className="bg-card border-b border-border sticky top-0 z-40">
+          <div className="bg-white dark:bg-gray-900 border-b border-border sticky top-0 z-40 backdrop-blur-lg shadow-sm">
             <div className="flex space-x-8 px-6">
               <button 
                 className={`py-4 px-2 text-sm font-medium border-b-2 transition-colors ${
