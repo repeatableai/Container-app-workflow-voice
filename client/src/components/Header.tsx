@@ -43,7 +43,7 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-border sticky top-0 z-50 backdrop-blur-lg shadow-sm">
       <div className="flex items-center justify-between px-6 py-3">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
           <Link href="/">
             <div className="flex items-center space-x-2 cursor-pointer">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -52,6 +52,29 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
               <span className="text-xl font-semibold text-foreground">ContainerHub</span>
             </div>
           </Link>
+          
+          {/* Navigation Links */}
+          <nav className="flex items-center space-x-4">
+            <Link href="/">
+              <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                Home
+              </span>
+            </Link>
+            {user?.role === 'admin' && (
+              <Link href="/dashboard">
+                <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  Dashboard
+                </span>
+              </Link>
+            )}
+            {user?.role === 'admin' && (
+              <Link href="/admin">
+                <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  Admin
+                </span>
+              </Link>
+            )}
+          </nav>
           
           {showSearch && (
             <div className="relative ml-8">

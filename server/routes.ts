@@ -251,6 +251,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company container routes
+  app.get('/api/company/containers', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get user to find their company
+      const user = await storage.getUser(userId);
+      if (!user || !user.companyId) {
+        return res.status(400).json({ message: "User is not associated with a company" });
+      }
+      
+      const { search } = req.query;
+      
+      // Get company's containers
+      let containers = await storage.getCompanyContainers(user.companyId);
+      
+      // Apply search filter if provided
+      if (search && typeof search === 'string') {
+        const searchLower = search.toLowerCase();
+        containers = containers.filter(container => 
+          container.title.toLowerCase().includes(searchLower) ||
+          container.description?.toLowerCase().includes(searchLower) ||
+          container.industry?.toLowerCase().includes(searchLower) ||
+          container.department?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      res.json(containers);
+    } catch (error) {
+      console.error("Error fetching company containers:", error);
+      res.status(500).json({ message: "Failed to fetch company containers" });
+    }
+  });
+  
+  app.get('/api/company/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get user to find their company
+      const user = await storage.getUser(userId);
+      if (!user || !user.companyId) {
+        return res.status(400).json({ message: "User is not associated with a company" });
+      }
+      
+      const stats = await storage.getCompanyStats(user.companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching company stats:", error);
+      res.status(500).json({ message: "Failed to fetch company stats" });
+    }
+  });
+
+  // Admin route to assign containers to companies
+  app.post('/api/admin/assign-container', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const { companyId, containerId } = req.body;
+      
+      const assignment = await storage.assignContainerToCompany({
+        companyId,
+        containerId,
+        assignedBy: userId,
+      });
+      
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning container to company:", error);
+      res.status(500).json({ message: "Failed to assign container" });
+    }
+  });
+  
+  // Company management routes
+  app.post('/api/admin/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const company = await storage.createCompany(req.body);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error("Error creating company:", error);
+      res.status(500).json({ message: "Failed to create company" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

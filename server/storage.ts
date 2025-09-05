@@ -1,11 +1,17 @@
 import {
   users,
+  companies,
   containers,
+  companyContainerAssignments,
   userPermissions,
   type User,
   type UpsertUser,
+  type Company,
+  type InsertCompany,
   type Container,
   type InsertContainer,
+  type CompanyContainerAssignment,
+  type InsertCompanyContainerAssignment,
   type UserPermission,
   type InsertUserPermission,
   type UpdateUserPermission,
@@ -19,6 +25,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  
+  // Company operations
+  getCompany(id: string): Promise<Company | undefined>;
+  createCompany(company: InsertCompany): Promise<Company>;
   
   // Container operations
   getContainers(filters?: {
@@ -34,6 +44,11 @@ export interface IStorage {
   updateContainer(id: string, updates: Partial<InsertContainer>): Promise<Container>;
   deleteContainer(id: string): Promise<void>;
   incrementContainerViews(id: string): Promise<void>;
+  
+  // Company container operations
+  getCompanyContainers(companyId: string): Promise<Container[]>;
+  assignContainerToCompany(assignment: InsertCompanyContainerAssignment): Promise<CompanyContainerAssignment>;
+  getCompanyStats(companyId: string): Promise<ContainerStats>;
   
   // Permission operations
   getUserPermissions(userId: string): Promise<UserPermission | undefined>;
@@ -241,6 +256,84 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${containers.department} IS NOT NULL`);
     
     return result.map(r => r.department).filter(Boolean) as string[];
+  }
+  
+  // Company operations
+  async getCompany(id: string): Promise<Company | undefined> {
+    const [company] = await db.select().from(companies).where(eq(companies.id, id));
+    return company;
+  }
+  
+  async createCompany(companyData: InsertCompany): Promise<Company> {
+    const [company] = await db
+      .insert(companies)
+      .values(companyData)
+      .returning();
+    return company;
+  }
+  
+  // Company container operations
+  async getCompanyContainers(companyId: string): Promise<Container[]> {
+    const result = await db
+      .select({
+        id: containers.id,
+        title: containers.title,
+        description: containers.description,
+        type: containers.type,
+        industry: containers.industry,
+        department: containers.department,
+        visibility: containers.visibility,
+        tags: containers.tags,
+        views: containers.views,
+        createdBy: containers.createdBy,
+        createdAt: containers.createdAt,
+        updatedAt: containers.updatedAt,
+      })
+      .from(containers)
+      .innerJoin(companyContainerAssignments, eq(containers.id, companyContainerAssignments.containerId))
+      .where(eq(companyContainerAssignments.companyId, companyId))
+      .orderBy(desc(containers.createdAt));
+    
+    return result;
+  }
+  
+  async assignContainerToCompany(assignmentData: InsertCompanyContainerAssignment): Promise<CompanyContainerAssignment> {
+    const [assignment] = await db
+      .insert(companyContainerAssignments)
+      .values(assignmentData)
+      .returning();
+    return assignment;
+  }
+  
+  async getCompanyStats(companyId: string): Promise<ContainerStats> {
+    // Get all containers assigned to the company
+    const companyContainers = await this.getCompanyContainers(companyId);
+    
+    // Calculate stats based on company's assigned containers
+    const totalContainers = companyContainers.length;
+    const totalViews = companyContainers.reduce((sum, container) => sum + (container.views || 0), 0);
+    
+    // Count by type
+    const apps = companyContainers.filter(c => c.type === 'app').length;
+    const voices = companyContainers.filter(c => c.type === 'voice').length;
+    const workflows = companyContainers.filter(c => c.type === 'workflow').length;
+    
+    // Get company users count
+    const usersResult = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.companyId, companyId));
+    
+    const activeUsers = usersResult[0]?.count || 0;
+    
+    return {
+      totalContainers,
+      totalViews,
+      activeUsers,
+      apps,
+      voices,
+      workflows,
+    };
   }
 }
 
