@@ -153,7 +153,37 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           {importType === 'file' && (
             <div className="space-y-3">
               <Label>Select File</Label>
-              <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg">
+              <div 
+                className="flex items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const files = e.dataTransfer.files;
+                  if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type === 'application/json' || file.name.endsWith('.json') ||
+                        file.type === 'text/csv' || file.name.endsWith('.csv') ||
+                        file.type === 'application/zip' || file.name.endsWith('.zip')) {
+                      handleFileImport(file);
+                    } else {
+                      toast({
+                        title: "Invalid file type",
+                        description: "Please upload a JSON, CSV, or ZIP file.",
+                        variant: "destructive",
+                      });
+                    }
+                  }
+                }}
+                onClick={() => document.getElementById('file-input')?.click()}
+              >
                 <div className="text-center">
                   <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">
@@ -162,20 +192,21 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                   <p className="text-xs text-muted-foreground">
                     JSON, CSV, or ZIP files
                   </p>
-                  <Input
-                    type="file"
-                    className="sr-only"
-                    accept=".json,.csv,.zip"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleFileImport(file);
-                      }
-                    }}
-                    data-testid="file-input"
-                  />
                 </div>
               </div>
+              <Input
+                id="file-input"
+                type="file"
+                className="hidden"
+                accept=".json,.csv,.zip"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileImport(file);
+                  }
+                }}
+                data-testid="file-input"
+              />
             </div>
           )}
 
