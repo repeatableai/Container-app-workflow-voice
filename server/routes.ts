@@ -156,10 +156,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      
-      if (!user || (user.role !== 'admin' && user.role !== 'viewer')) {
-        return res.status(403).json({ message: "Admin or Viewer access required" });
-      }
 
       const users = await storage.getAllUsers();
       const usersWithPermissions = await Promise.all(
