@@ -65,14 +65,14 @@ export default function Header({ searchQuery, onSearchChange, showSearch = true 
                 Library
               </span>
             </Link>
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'viewer') && (
               <Link href="/dashboard">
                 <span className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   Dashboard
                 </span>
               </Link>
             )}
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'viewer') && (
               <Link href="/admin">
                 <span className="text-sm font-medium text-muted-foreground transition-colors cursor-pointer">
                   Admin

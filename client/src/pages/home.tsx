@@ -170,7 +170,7 @@ export default function Home() {
               </div>
 
               {/* Admin/Management Links */}
-              {user?.role === 'admin' && (
+              {(user?.role === 'admin' || user?.role === 'viewer') && (
                 <Link href="/dashboard">
                   <Button variant="outline" size="sm" data-testid="manage-button">
                     <Settings className="w-4 h-4 mr-2" />

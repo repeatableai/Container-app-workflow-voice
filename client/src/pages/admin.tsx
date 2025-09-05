@@ -19,12 +19,12 @@ export default function Admin() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not admin/viewer
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
+    if (!isLoading && (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'viewer'))) {
       toast({
         title: "Unauthorized",
-        description: "Admin access required. Redirecting...",
+        description: "Admin or Viewer access required. Redirecting...",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -37,7 +37,7 @@ export default function Admin() {
   // Fetch users
   const { data: users = [], isLoading: usersLoading } = useQuery<UserWithPermissions[]>({
     queryKey: ['/api/admin/users'],
-    enabled: isAuthenticated && user?.role === 'admin',
+    enabled: isAuthenticated && (user?.role === 'admin' || user?.role === 'viewer'),
     retry: false,
   });
 
