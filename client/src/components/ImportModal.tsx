@@ -45,55 +45,93 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         containersData = Array.isArray(jsonData) ? jsonData : (jsonData.containers || [jsonData]);
       } else if (file.name.endsWith('.csv')) {
         // Enhanced CSV parsing with URL analysis for apps/workflows, instructions for voices
-        const lines = fileContent.split('\n').filter(line => line.trim());
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         
         if (activeTab === 'voice') {
           console.log('Processing voice agent CSV import with activeTab:', activeTab);
-          console.log('CSV headers:', headers);
-          // Simple CSV parsing: column positions are fixed
-          // Column 0: Industry
-          // Column 1: Job_Title  
-          // Column 2: Job_Task
-          // Column 3: AI_Voice_Agent_Type
-          // Column 4: ElevenLabs_Complete_Prompt
-          // Column 5+: metadata
           
-          // LIMIT to first 20 rows to get the exact Registered Nurse data from your CSV sample
-          const voiceAgents = lines.slice(1, 21)
-            .map((line, index) => {
-              // Handle CSV parsing with quoted fields that may contain commas
-              const columns = [];
-              let current = '';
-              let inQuotes = false;
+          // PROPER CSV parsing that handles multiline quoted fields
+          const parseCSV = (csvText: string) => {
+            const rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let inQuotes = false;
+            let i = 0;
+            
+            while (i < csvText.length) {
+              const char = csvText[i];
               
-              for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') {
-                  inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                  columns.push(current.trim());
-                  current = '';
+              if (char === '"') {
+                if (inQuotes && csvText[i + 1] === '"') {
+                  // Handle escaped quotes ("")
+                  currentField += '"';
+                  i += 2;
+                  continue;
                 } else {
-                  current += char;
+                  // Toggle quote state
+                  inQuotes = !inQuotes;
                 }
+              } else if (char === ',' && !inQuotes) {
+                // End of field
+                currentRow.push(currentField.trim());
+                currentField = '';
+              } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                // End of row (only if not inside quotes)
+                if (currentField.trim() || currentRow.length > 0) {
+                  currentRow.push(currentField.trim());
+                  if (currentRow.some(field => field.length > 0)) {
+                    rows.push(currentRow);
+                  }
+                  currentRow = [];
+                  currentField = '';
+                }
+                // Skip \r\n combinations
+                if (char === '\r' && csvText[i + 1] === '\n') {
+                  i++;
+                }
+              } else {
+                // Add character to current field
+                currentField += char;
               }
-              columns.push(current.trim()); // Add the last column
-              
+              i++;
+            }
+            
+            // Handle last field/row
+            if (currentField.trim() || currentRow.length > 0) {
+              currentRow.push(currentField.trim());
+              if (currentRow.some(field => field.length > 0)) {
+                rows.push(currentRow);
+              }
+            }
+            
+            return rows;
+          };
+          
+          const rows = parseCSV(fileContent);
+          console.log(`Parsed ${rows.length} total rows from CSV`);
+          
+          if (rows.length < 2) {
+            throw new Error('CSV file must have at least a header row and one data row');
+          }
+          
+          // Skip header row, take first 20 data rows
+          const dataRows = rows.slice(1, 21);
+          console.log(`Processing first ${dataRows.length} data rows`);
+          
+          const voiceAgents = dataRows
+            .map((columns, index) => {
               // DEBUG: Log first 5 rows to see exact data
               if (index < 5) {
                 console.log(`=== ROW ${index + 1} DEBUG ===`);
-                console.log('Raw line:', line.substring(0, 200) + '...');
-                console.log('Parsed columns [0-4]:', columns.slice(0, 5));
-                console.log('Column count:', columns.length);
+                console.log('Parsed columns:', columns.length, 'columns');
+                console.log('Columns [0-4]:', columns.slice(0, 5).map(c => c.substring(0, 50) + (c.length > 50 ? '...' : '')));
               }
               
-              // Simple column access by position
-              const industry = columns[0]?.replace(/"/g, '').trim() || 'General';
-              const jobTitle = columns[1]?.replace(/"/g, '').trim() || 'Professional';
-              const jobTask = columns[2]?.replace(/"/g, '').trim() || 'Task';
-              const aiVoiceAgentType = columns[3]?.replace(/"/g, '').trim() || '';
-              const elevenLabsPrompt = columns[4]?.replace(/"/g, '').trim();
+              // Extract fields by column position (exactly as you specified)
+              const industry = columns[0]?.trim() || 'General';
+              const jobTitle = columns[1]?.trim() || 'Professional'; 
+              const jobTask = columns[2]?.trim() || 'Task';
+              const aiVoiceAgentType = columns[3]?.trim() || '';
+              const elevenLabsPrompt = columns[4]?.trim();
               
               // DEBUG: Log the extracted values for first 5 rows
               if (index < 5) {
@@ -157,7 +195,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           containersData = voiceAgents;
         } else {
           // Apps/Workflows: use URL analysis (existing behavior)
-          const urlColumnIndex = headers.findIndex(h => 
+          const lines = fileContent.split('\n').filter(line => line.trim());
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          
+          const urlColumnIndex = headers.findIndex((h: string) => 
             h.includes('url') || h.includes('link') || h.includes('source') || h.includes('app')
           );
           
@@ -166,7 +207,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           }
         
           const urls = lines.slice(1)
-            .map(line => line.split(',')[urlColumnIndex]?.trim())
+            .map((line: string) => line.split(',')[urlColumnIndex]?.trim())
             .filter(Boolean);
           
           if (urls.length === 0) {
