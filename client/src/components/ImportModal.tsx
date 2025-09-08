@@ -34,80 +34,122 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         const jsonData = JSON.parse(fileContent);
         containersData = Array.isArray(jsonData) ? jsonData : (jsonData.containers || [jsonData]);
       } else if (file.name.endsWith('.csv')) {
-        // Enhanced CSV parsing with URL analysis
+        // Enhanced CSV parsing with URL analysis for apps/workflows, instructions for voices
         const lines = fileContent.split('\n').filter(line => line.trim());
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         
-        // Find URL column (supports various header names)
-        const urlColumnIndex = headers.findIndex(h => 
-          h.includes('url') || h.includes('link') || h.includes('source') || h.includes('app')
-        );
-        
-        if (urlColumnIndex === -1) {
-          throw new Error('CSV file must contain a URL column (url, link, source, or app)');
-        }
-        
-        const urls = lines.slice(1)
-          .map(line => line.split(',')[urlColumnIndex]?.trim())
-          .filter(Boolean);
-        
-        if (urls.length === 0) {
-          throw new Error('No URLs found in CSV file');
-        }
-        
-        // Analyze each URL with progress tracking using server-side analysis
-        setImportProgress({ current: 0, total: urls.length, currentUrl: '' });
-        containersData = [];
-        
-        for (let index = 0; index < urls.length; index++) {
-          const url = urls[index];
-          setImportProgress({ current: index + 1, total: urls.length, currentUrl: url });
+        if (activeTab === 'voice') {
+          // Voice agents: look for instructions/prompt column
+          const instructionsColumnIndex = headers.findIndex(h => 
+            h.includes('instructions') || h.includes('prompt') || h.includes('description') || h.includes('content')
+          );
           
-          try {
-            // Use server-side URL analysis to bypass CORS restrictions
-            console.log('Analyzing URL:', url);
-            const analysis = await apiRequest('POST', '/api/analyze-url', { url });
-            console.log('Analysis result:', analysis);
+          if (instructionsColumnIndex === -1) {
+            throw new Error('CSV file must contain an instructions column (instructions, prompt, description, or content) for voice agents');
+          }
+          
+          // Also look for optional title column
+          const titleColumnIndex = headers.findIndex(h => h.includes('title') || h.includes('name'));
+          
+          const voiceAgents = lines.slice(1)
+            .map((line, index) => {
+              const columns = line.split(',');
+              const instructions = columns[instructionsColumnIndex]?.trim();
+              const title = titleColumnIndex >= 0 ? columns[titleColumnIndex]?.trim() : `Voice Agent ${index + 1}`;
+              
+              if (!instructions) return null;
+              
+              return {
+                title: title || `Voice Agent ${index + 1}`,
+                description: instructions,
+                type: activeTab,
+                industry: 'AI Voice',
+                department: '',
+                visibility: 'public',
+                tags: ['imported', 'csv', 'voice', 'instructions'],
+                url: '', // Voice agents don't need URLs - instructions are in description
+                isMarketplace: true
+              };
+            })
+            .filter(Boolean);
+          
+          if (voiceAgents.length === 0) {
+            throw new Error('No valid voice agent instructions found in CSV file');
+          }
+          
+          containersData = voiceAgents;
+        } else {
+          // Apps/Workflows: use URL analysis (existing behavior)
+          const urlColumnIndex = headers.findIndex(h => 
+            h.includes('url') || h.includes('link') || h.includes('source') || h.includes('app')
+          );
+          
+          if (urlColumnIndex === -1) {
+            throw new Error('CSV file must contain a URL column (url, link, source, or app)');
+          }
+        
+          const urls = lines.slice(1)
+            .map(line => line.split(',')[urlColumnIndex]?.trim())
+            .filter(Boolean);
+          
+          if (urls.length === 0) {
+            throw new Error('No URLs found in CSV file');
+          }
+          
+          // Analyze each URL with progress tracking using server-side analysis
+          setImportProgress({ current: 0, total: urls.length, currentUrl: '' });
+          containersData = [];
+          
+          for (let index = 0; index < urls.length; index++) {
+            const url = urls[index];
+            setImportProgress({ current: index + 1, total: urls.length, currentUrl: url });
             
-            containersData.push({
-              title: analysis.title,
-              description: analysis.description,
-              type: activeTab,
-              industry: analysis.appType || '',
-              department: '',
-              visibility: 'public',
-              tags: ['imported', 'csv', analysis.appType?.toLowerCase(), ...analysis.features].filter(Boolean),
-              url: url,
-              isMarketplace: true
-            });
-          } catch (error) {
-            console.error('Failed to analyze URL:', url, error);
-            // Fallback for any analysis errors
             try {
-              const hostname = new URL(url).hostname.replace('www.', '');
+              // Use server-side URL analysis to bypass CORS restrictions
+              console.log('Analyzing URL:', url);
+              const analysis = await apiRequest('POST', '/api/analyze-url', { url });
+              console.log('Analysis result:', analysis);
+              
               containersData.push({
-                title: `App from ${hostname}`,
-                description: `Application imported from ${url}`,
+                title: analysis.title,
+                description: analysis.description,
                 type: activeTab,
-                industry: 'Web Application',
+                industry: analysis.appType || '',
                 department: '',
                 visibility: 'public',
-                tags: ['imported', 'csv'],
+                tags: ['imported', 'csv', analysis.appType?.toLowerCase(), ...analysis.features].filter(Boolean),
                 url: url,
                 isMarketplace: true
               });
-            } catch {
-              containersData.push({
-                title: `App ${index + 1}`,
-                description: `Application from ${url}`,
-                type: activeTab,
-                industry: '',
-                department: '',
-                visibility: 'public',
-                tags: ['imported', 'csv'],
-                url: url,
-                isMarketplace: true
-              });
+            } catch (error) {
+              console.error('Failed to analyze URL:', url, error);
+              // Fallback for any analysis errors
+              try {
+                const hostname = new URL(url).hostname.replace('www.', '');
+                containersData.push({
+                  title: `App from ${hostname}`,
+                  description: `Application imported from ${url}`,
+                  type: activeTab,
+                  industry: 'Web Application',
+                  department: '',
+                  visibility: 'public',
+                  tags: ['imported', 'csv'],
+                  url: url,
+                  isMarketplace: true
+                });
+              } catch {
+                containersData.push({
+                  title: `App ${index + 1}`,
+                  description: `Application from ${url}`,
+                  type: activeTab,
+                  industry: '',
+                  department: '',
+                  visibility: 'public',
+                  tags: ['imported', 'csv'],
+                  url: url,
+                  isMarketplace: true
+                });
+              }
             }
           }
         }

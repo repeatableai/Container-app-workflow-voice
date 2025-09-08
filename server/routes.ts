@@ -467,6 +467,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH endpoint for user editing (less restrictive than PUT)
+  app.patch('/api/containers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Allow editing of title, description, and URL only
+      const allowedFields = ['title', 'description', 'url'];
+      const updateData: Record<string, any> = {};
+      
+      for (const [key, value] of Object.entries(req.body)) {
+        if (allowedFields.includes(key)) {
+          updateData[key] = value;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const container = await storage.updateContainer(req.params.id, updateData);
+      res.json(container);
+    } catch (error) {
+      console.error("Error updating container:", error);
+      res.status(500).json({ message: "Failed to update container" });
+    }
+  });
+
   app.delete('/api/containers/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
