@@ -46,7 +46,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       } else if (file.name.endsWith('.jsonl')) {
         // JSONL format: one JSON object per line
         const lines = fileContent.split('\n').filter(line => line.trim());
-        containersData = lines.map(line => {
+        const parsedObjects = lines.map(line => {
           try {
             return JSON.parse(line.trim());
           } catch (error) {
@@ -55,7 +55,66 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           }
         }).filter(Boolean);
         
-        console.log(`Successfully parsed ${containersData.length} objects from JSONL file`);
+        console.log(`Successfully parsed ${parsedObjects.length} objects from JSONL file`);
+        
+        // For voice agents, convert JSONL format to container format
+        if (activeTab === 'voice') {
+          // LIMIT to first 50 for testing
+          const limitedObjects = parsedObjects.slice(0, 50);
+          console.log(`Processing first ${limitedObjects.length} voice agents for testing`);
+          
+          containersData = limitedObjects.map((obj, index) => {
+            // Extract fields using your exact column specification
+            const industry = obj.Industry || obj.industry || 'General';
+            const jobTitle = obj.Job_Title || obj.job_title || obj.jobTitle || 'Professional';
+            const jobTask = obj.Job_Task || obj.job_task || obj.jobTask || 'Task';
+            const aiVoiceAgentType = obj.AI_Voice_Agent_Type || obj.ai_voice_agent_type || obj.aiVoiceAgentType || '';
+            const elevenLabsPrompt = obj.ElevenLabs_Complete_Prompt || obj.elevenlabs_complete_prompt || obj.prompt || obj.description;
+            
+            if (!elevenLabsPrompt || elevenLabsPrompt.length < 50) {
+              console.log(`Skipping JSONL object ${index + 1}: invalid or short prompt`);
+              return null;
+            }
+            
+            // Create title exactly as you specified: "Industry - Job_Title - Job_Task - AI_Voice_Agent_Type"
+            const smartTitle = `${industry} - ${jobTitle} - ${jobTask} - ${aiVoiceAgentType}`;
+            
+            console.log(`Creating voice agent "${smartTitle}" from JSONL`);
+            
+            return {
+              title: smartTitle,
+              description: elevenLabsPrompt.substring(0, 500) + '...', // Truncated for description
+              fullInstructions: elevenLabsPrompt, // Complete prompt for copy/paste
+              type: activeTab,
+              industry: industry,
+              department: jobTitle,
+              visibility: 'public',
+              tags: [industry, jobTitle, aiVoiceAgentType, 'imported', 'jsonl', '11labs'].filter(Boolean),
+              url: '', // Voice agents don't need URLs
+              isMarketplace: true,
+              // Enhanced voice agent metadata
+              aiVoiceAgentType: aiVoiceAgentType,
+              experienceLevel: 'Professional',
+              // Additional metadata if available
+              productivityGains: obj.Productivity_Gains || obj.productivity_gains || '',
+              roiPotential: obj.ROI_Potential || obj.roi_potential || '',
+              efficiencyImprovements: obj.Efficiency_Improvements || obj.efficiency_improvements || ''
+            };
+          }).filter(Boolean);
+        } else {
+          // For apps and workflows, use objects as-is with some mapping
+          containersData = parsedObjects.map(obj => ({
+            title: obj.title || obj.name || 'Imported Container',
+            description: obj.description || '',
+            type: activeTab,
+            industry: obj.industry || '',
+            department: obj.department || '',
+            visibility: obj.visibility || 'public',
+            tags: Array.isArray(obj.tags) ? obj.tags : [],
+            isMarketplace: true,
+            ...obj
+          }));
+        }
       } else if (file.name.endsWith('.csv')) {
         // Enhanced CSV parsing with URL analysis for apps/workflows, instructions for voices
         
@@ -314,6 +373,11 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         
         console.log(`Processing batch ${batchNumber}/${totalBatches}: ${batch.length} containers`);
         
+        // Debug: Log the first container in each batch to verify structure
+        if (batchNumber === 1 && batch.length > 0) {
+          console.log('First container structure:', batch[0]);
+        }
+        
         try {
           const response = await apiRequest('POST', '/api/containers/bulk', {
             containers: batch
@@ -346,16 +410,12 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           });
           
         } catch (error) {
-          console.warn(`Batch ${batchNumber} failed:`, error);
-          // Fallback to individual processing for this batch if bulk fails
-          for (const containerData of batch) {
-            try {
-              await apiRequest('POST', '/api/containers', containerData);
-              createdCount++;
-            } catch (individualError) {
-              console.warn('Failed to create individual container:', containerData, individualError);
-            }
-          }
+          console.error(`Batch ${batchNumber} failed:`, error);
+          console.error('Failed batch data:', batch);
+          // Skip fallback for now to avoid validation errors
+          // The bulk endpoint should be fixed instead of falling back
+          console.log(`Skipping fallback for batch ${batchNumber} - fix bulk endpoint instead`);
+          break;
         }
         
         // Small delay between batches to avoid overwhelming the server
