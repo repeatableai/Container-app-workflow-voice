@@ -312,6 +312,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk re-analyze existing containers
+  app.post('/api/bulk-reanalyze', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get all marketplace containers with generic titles
+      const containers = await storage.getContainers({
+        isMarketplace: true,
+        userId
+      });
+
+      const genericContainers = containers.filter(c => 
+        c.title.startsWith('App from ') || c.title.includes('.com')
+      );
+
+      console.log(`Found ${genericContainers.length} containers to re-analyze`);
+      
+      let updated = 0;
+      let failed = 0;
+      
+      for (const container of genericContainers.slice(0, 20)) { // Process first 20 to avoid timeout
+        try {
+          if (!container.url) {
+            failed++;
+            continue;
+          }
+          
+          console.log(`Re-analyzing: ${container.url}`);
+          
+          const response = await fetch(container.url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined // 8 second timeout per URL
+          });
+
+          if (response.ok) {
+            const html = await response.text();
+            const analysis = analyzeAppContent(html, container.url!);
+            
+            // Only update if we got a meaningful title (not a fallback)
+            if (analysis.title && !analysis.title.includes('App from') && analysis.title.length > 3) {
+              await storage.updateContainer(container.id, {
+                title: analysis.title,
+                description: analysis.description
+              });
+              updated++;
+              console.log(`✓ Updated: ${container.url} -> ${analysis.title}`);
+            } else {
+              failed++;
+              console.log(`✗ No improvement: ${container.url}`);
+            }
+          } else {
+            failed++;
+            console.log(`✗ HTTP ${response.status}: ${container.url}`);
+          }
+        } catch (error) {
+          failed++;
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.log(`✗ Error: ${container.url} - ${errorMsg}`);
+        }
+        
+        // Small delay to avoid overwhelming servers
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      res.json({ 
+        message: `Bulk re-analysis complete: ${updated} updated, ${failed} failed`,
+        updated, 
+        failed,
+        total: genericContainers.length 
+      });
+    } catch (error) {
+      console.error("Error in bulk re-analysis:", error);
+      res.status(500).json({ message: "Failed to bulk re-analyze containers" });
+    }
+  });
+
   // URL analysis endpoint
   app.post('/api/analyze-url', isAuthenticated, async (req: any, res) => {
     try {

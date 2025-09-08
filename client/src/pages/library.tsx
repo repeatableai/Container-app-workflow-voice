@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Grid, List, Package } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Container, ContainerStats } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Library() {
   const { toast } = useToast();
@@ -29,6 +30,7 @@ export default function Library() {
   });
   const [sortBy, setSortBy] = useState('Recently Added');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -108,6 +110,31 @@ export default function Library() {
         description: "Failed to add container to your organization.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleBulkReanalyze = async () => {
+    try {
+      setIsReanalyzing(true);
+      const response = await apiRequest('POST', '/api/bulk-reanalyze');
+      const result = await response.json();
+      
+      toast({
+        title: "Re-analysis Complete!",
+        description: `${result.updated} containers updated with proper titles. ${result.failed} failed.`,
+        variant: "default",
+      });
+      
+      // Refresh the containers list
+      queryClient.invalidateQueries({ queryKey: ['marketplace-containers'] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to re-analyze containers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReanalyzing(false);
     }
   };
 
@@ -203,6 +230,18 @@ export default function Library() {
               </div>
               
               <div className="flex items-center space-x-4">
+                {/* Bulk Re-analysis Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkReanalyze}
+                  disabled={isReanalyzing}
+                  data-testid="bulk-reanalyze-button"
+                  className="text-xs"
+                >
+                  {isReanalyzing ? 'Re-analyzing...' : 'Fix App Titles'}
+                </Button>
+                
                 {/* Sort Dropdown */}
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-48">
