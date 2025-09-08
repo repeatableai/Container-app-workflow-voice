@@ -84,43 +84,119 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     }
   };
 
+  const extractMetaFromHTML = (html: string, url: string) => {
+    // Create a temporary DOM parser
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Extract title
+    let title = doc.querySelector('title')?.textContent || '';
+    if (!title) {
+      title = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
+    }
+    if (!title) {
+      title = doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') || '';
+    }
+    if (!title) {
+      // Fallback to URL-based title
+      const urlObj = new URL(url);
+      title = urlObj.hostname.replace('www.', '') + ' - ' + urlObj.pathname.split('/').filter(Boolean).join(' ');
+    }
+    
+    // Extract description
+    let description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+    if (!description) {
+      description = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
+    }
+    if (!description) {
+      description = doc.querySelector('meta[name="twitter:description"]')?.getAttribute('content') || '';
+    }
+    if (!description) {
+      // Fallback to first paragraph or heading
+      const firstP = doc.querySelector('p');
+      const firstH = doc.querySelector('h1, h2, h3');
+      description = firstP?.textContent?.slice(0, 200) || firstH?.textContent?.slice(0, 100) || 'No description available';
+    }
+    
+    return {
+      title: title.trim(),
+      description: description.trim()
+    };
+  };
+
   const handleURLImport = async (url: string) => {
     setIsImporting(true);
     try {
-      const response = await fetch(url);
+      // Validate URL
+      new URL(url); // This will throw if invalid
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
       if (!response.ok) {
         throw new Error('Failed to fetch from URL');
       }
       
-      const data = await response.json();
-      const containersData = Array.isArray(data) ? data : (data.containers || [data]);
+      const contentType = response.headers.get('content-type') || '';
       
-      // Create containers via API
-      let createdCount = 0;
-      for (const containerData of containersData) {
-        try {
-          const containerToCreate = {
-            title: containerData.title || containerData.name || 'Imported Container',
-            description: containerData.description || '',
-            type: activeTab,
-            industry: containerData.industry || '',
-            department: containerData.department || '',
-            visibility: containerData.visibility || 'public',
-            tags: Array.isArray(containerData.tags) ? containerData.tags : [],
-            ...containerData
-          };
-          
-          await apiRequest('POST', '/api/containers', containerToCreate);
-          createdCount++;
-        } catch (error) {
-          console.warn('Failed to create container:', containerData, error);
+      if (contentType.includes('application/json')) {
+        // Handle JSON data URLs
+        const data = await response.json();
+        const containersData = Array.isArray(data) ? data : (data.containers || [data]);
+        
+        let createdCount = 0;
+        for (const containerData of containersData) {
+          try {
+            const containerToCreate = {
+              title: containerData.title || containerData.name || 'Imported Container',
+              description: containerData.description || '',
+              type: activeTab,
+              industry: containerData.industry || '',
+              department: containerData.department || '',
+              visibility: containerData.visibility || 'public',
+              tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+              url: url,
+              ...containerData
+            };
+            
+            await apiRequest('POST', '/api/containers', containerToCreate);
+            createdCount++;
+          } catch (error) {
+            console.warn('Failed to create container:', containerData, error);
+          }
         }
+        
+        toast({
+          title: "Success",
+          description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
+        });
+      } else {
+        // Handle HTML/webpage URLs
+        const html = await response.text();
+        const { title, description } = extractMetaFromHTML(html, url);
+        
+        const containerToCreate = {
+          title: title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
+          description: description || `Imported ${activeTab} from ${url}`,
+          type: activeTab,
+          industry: '',
+          department: '',
+          visibility: 'public' as const,
+          tags: ['imported', 'url'],
+          url: url
+        };
+        
+        await apiRequest('POST', '/api/containers', containerToCreate);
+        
+        toast({
+          title: "Success",
+          description: `${activeTab} imported successfully from URL`,
+        });
       }
       
-      toast({
-        title: "Success",
-        description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
-      });
       onSuccess();
       onOpenChange(false);
     } catch (error) {
