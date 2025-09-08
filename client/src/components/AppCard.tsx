@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Eye, ExternalLink, Star, Users, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Download, Eye, ExternalLink, Star, Users, Calendar, Monitor } from "lucide-react";
 import type { Container } from "@shared/schema";
 
 interface AppCardProps {
@@ -14,6 +15,7 @@ interface AppCardProps {
 
 export default function AppCard({ container, onView, onDelete, canDelete }: AppCardProps) {
   const [isInstalling, setIsInstalling] = useState(false);
+  const [showIframe, setShowIframe] = useState(false);
 
   const handleInstall = async () => {
     setIsInstalling(true);
@@ -108,18 +110,20 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
             <Download className="w-4 h-4 mr-2" />
             {isInstalling ? 'Installing...' : 'Install'}
           </Button>
+          {container.url && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => container.url && window.open(container.url, '_blank')}
+              data-testid="view-details-button"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onView(container.id)}
-            data-testid="view-details-button"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => onView(container.id)}
+            onClick={() => setShowIframe(true)}
             data-testid="preview-button"
           >
             <Eye className="w-4 h-4" />
@@ -146,6 +150,36 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
           </div>
         </div>
       </CardContent>
+
+      {/* Iframe Dialog */}
+      <Dialog open={showIframe} onOpenChange={setShowIframe}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              {container.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="w-full h-[70vh] border rounded-lg overflow-hidden">
+            {container.url ? (
+              <iframe
+                src={container.url}
+                className="w-full h-full border-0"
+                title={container.title}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                data-testid="container-iframe"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full bg-muted text-muted-foreground">
+                <div className="text-center">
+                  <Monitor className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No URL available for preview</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
