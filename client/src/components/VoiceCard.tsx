@@ -27,6 +27,13 @@ export default function VoiceCard({ container, onView, onDelete, canDelete }: Vo
     }
   };
 
+  const handleViewVoice = () => {
+    onView(container.id);
+    if (container.url) {
+      setShowIframe(true);
+    }
+  };
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return 'Unknown';
     const d = new Date(date);
@@ -174,7 +181,7 @@ export default function VoiceCard({ container, onView, onDelete, canDelete }: Vo
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowIframe(true)}
+            onClick={handleViewVoice}
             data-testid="preview-button"
           >
             <Monitor className="w-4 h-4" />

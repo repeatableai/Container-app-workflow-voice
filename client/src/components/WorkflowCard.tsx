@@ -27,6 +27,13 @@ export default function WorkflowCard({ container, onView, onDelete, canDelete }:
     setLastRun(new Date());
   };
 
+  const handleViewWorkflow = () => {
+    onView(container.id);
+    if (container.url) {
+      setShowIframe(true);
+    }
+  };
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return 'Never';
     const d = new Date(date);
@@ -191,7 +198,7 @@ export default function WorkflowCard({ container, onView, onDelete, canDelete }:
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowIframe(true)}
+            onClick={handleViewWorkflow}
             data-testid="preview-button"
           >
             <Monitor className="w-4 h-4" />

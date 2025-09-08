@@ -25,6 +25,13 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
     onView(container.id);
   };
 
+  const handleViewApp = () => {
+    onView(container.id);
+    if (container.url) {
+      setShowIframe(true);
+    }
+  };
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return 'Unknown';
     const d = new Date(date);
@@ -123,7 +130,7 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowIframe(true)}
+            onClick={handleViewApp}
             data-testid="preview-button"
           >
             <Eye className="w-4 h-4" />
