@@ -328,7 +328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const html = await response.text();
+      console.log(`Analyzing ${url} - HTML length: ${html.length}`);
+      
       const analysis = analyzeAppContent(html, url);
+      console.log(`Analysis result for ${url}:`, analysis);
       
       res.json(analysis);
     } catch (error) {
