@@ -4,6 +4,121 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertContainerSchema, insertUserPermissionSchema, updateUserPermissionSchema } from "@shared/schema";
 
+// Server-side URL analysis function
+function analyzeAppContent(html: string, url: string) {
+  // Enhanced HTML parsing using regex (since we don't have DOM in Node.js)
+  let title = '';
+  let appType = '';
+  let features: string[] = [];
+  
+  // 1. Extract title from various sources
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+  const twitterTitleMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
+  
+  title = titleMatch?.[1] || ogTitleMatch?.[1] || twitterTitleMatch?.[1] || '';
+  
+  // 2. Analyze page structure for app type
+  const hasCanvas = /<canvas[^>]*>/i.test(html);
+  const hasVideo = /<video[^>]*>/i.test(html);
+  const hasForm = /<form[^>]*>/i.test(html);
+  
+  // Look for specific button patterns
+  const buttonPatterns = {
+    drawing: /draw|paint|brush|canvas|sketch/i,
+    media: /play|pause|volume|video|audio|media/i,
+    chat: /chat|send|message|talk/i,
+    task: /task|todo|complete|check/i,
+    calendar: /calendar|schedule|event|date/i,
+    calculator: /calculate|equals|number|math/i,
+    game: /game|play|score|level|start/i,
+    editor: /edit|save|format|bold|italic/i
+  };
+  
+  // Detect app type based on elements and content
+  if (hasCanvas || buttonPatterns.drawing.test(html)) {
+    appType = 'Drawing/Graphics';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Creative Drawing Canvas';
+    }
+    features.push('canvas drawing', 'graphics tools');
+  } else if (hasVideo || buttonPatterns.media.test(html)) {
+    appType = 'Media Player';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Media Player Application';
+    }
+    features.push('video playback', 'media controls');
+  } else if (buttonPatterns.chat.test(html)) {
+    appType = 'Communication';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Chat Application';
+    }
+    features.push('messaging', 'real-time communication');
+  } else if (buttonPatterns.task.test(html)) {
+    appType = 'Productivity';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Task Management Tool';
+    }
+    features.push('task tracking', 'productivity management');
+  } else if (buttonPatterns.calendar.test(html)) {
+    appType = 'Productivity';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Calendar Application';
+    }
+    features.push('scheduling', 'calendar management');
+  } else if (buttonPatterns.calculator.test(html)) {
+    appType = 'Utility';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Calculator Tool';
+    }
+    features.push('calculations', 'math operations');
+  } else if (buttonPatterns.game.test(html)) {
+    appType = 'Entertainment';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Game Application';
+    }
+    features.push('gaming', 'entertainment');
+  } else if (buttonPatterns.editor.test(html) || hasForm) {
+    appType = 'Productivity';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      title = 'Editor Application';
+    }
+    features.push('text editing', 'content creation');
+  } else {
+    appType = 'Web Application';
+    if (!title || title.includes('localhost') || title.includes('index')) {
+      const hostname = new URL(url).hostname.replace('www.', '');
+      title = `${hostname.charAt(0).toUpperCase() + hostname.slice(1)} App`;
+    }
+    features.push('web app', 'interactive tool');
+  }
+  
+  // Generate description
+  let description = '';
+  if (appType === 'Drawing/Graphics') {
+    description = 'Interactive drawing and graphics application with canvas-based tools for creating digital artwork and sketches.';
+  } else if (appType === 'Media Player') {
+    description = 'Media playback application supporting video and audio content with standard media controls.';
+  } else if (appType === 'Communication') {
+    description = 'Real-time communication platform enabling messaging and chat functionality between users.';
+  } else if (appType === 'Productivity') {
+    description = 'Productivity application designed to help users manage tasks, schedules, or content efficiently.';
+  } else if (appType === 'Utility') {
+    description = 'Utility application providing specialized tools and calculations for everyday use.';
+  } else if (appType === 'Entertainment') {
+    description = 'Interactive entertainment application featuring games and engaging user experiences.';
+  } else {
+    description = `Web-based application from ${new URL(url).hostname} providing interactive functionality and user tools.`;
+  }
+  
+  return {
+    title: title.trim(),
+    description,
+    appType,
+    features
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -132,6 +247,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating container:", error);
       res.status(500).json({ message: "Failed to create container" });
+    }
+  });
+
+  // URL analysis endpoint
+  app.post('/api/analyze-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
+      }
+
+      // Validate URL
+      try {
+        new URL(url);
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid URL format" });
+      }
+
+      // Fetch and analyze the webpage
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      if (!response.ok) {
+        // Return fallback data for failed requests
+        const hostname = new URL(url).hostname.replace('www.', '');
+        return res.json({
+          title: `App from ${hostname}`,
+          description: `Application imported from ${url}`,
+          appType: 'Web Application',
+          features: ['imported', 'web app']
+        });
+      }
+
+      const html = await response.text();
+      const analysis = analyzeAppContent(html, url);
+      
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing URL:", error);
+      
+      // Return fallback data on any error
+      try {
+        const hostname = new URL(req.body.url).hostname.replace('www.', '');
+        res.json({
+          title: `App from ${hostname}`,
+          description: `Application imported from ${req.body.url}`,
+          appType: 'Web Application',
+          features: ['imported', 'web app']
+        });
+      } catch {
+        res.status(500).json({ message: "Failed to analyze URL" });
+      }
     }
   });
 
