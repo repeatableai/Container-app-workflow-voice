@@ -24,6 +24,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
   const [isLiked, setIsLiked] = useState(false);
   const [showIframe, setShowIframe] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showFullInstructions, setShowFullInstructions] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editForm, setEditForm] = useState({
     title: container.title,
@@ -77,10 +78,53 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
     });
   };
 
+  const generateDisplayTitle = (container: Container) => {
+    // Use fullInstructions if available, otherwise fallback to description
+    const instructions = (container as any).fullInstructions || container.description || '';
+    const agentType = (container as any).aiVoiceAgentType || '';
+    const specialization = (container as any).specialization || '';
+    const useCase = (container as any).useCase || '';
+    
+    // If we have detailed information, create a descriptive title
+    if (agentType || specialization || useCase) {
+      let title = '';
+      
+      // Start with industry if available
+      if (container.industry && container.industry !== 'AI Voice') {
+        title += container.industry + ' - ';
+      }
+      
+      // Add the agent type or use case
+      if (agentType) {
+        title += agentType;
+      } else if (useCase) {
+        title += useCase;
+      } else if (specialization) {
+        title += specialization;
+      } else {
+        title += container.title;
+      }
+      
+      return title;
+    }
+    
+    // Fallback: try to extract industry and role from existing title
+    if (container.industry && container.industry !== 'AI Voice' && !container.title.toLowerCase().includes(container.industry.toLowerCase())) {
+      return `${container.industry} - ${container.title}`;
+    }
+    
+    return container.title;
+  };
+
+  const getFullInstructions = () => {
+    return (container as any).fullInstructions || container.description || 'No voice instructions provided';
+  };
+
   const handleCopyInstructions = async () => {
-    if (container.description) {
+    const fullText = getFullInstructions();
+    if (fullText) {
       try {
-        await navigator.clipboard.writeText(container.description);
+        await navigator.clipboard.writeText(fullText);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
@@ -104,7 +148,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground text-base truncate" data-testid="container-title">
-                  {container.title}
+                  {generateDisplayTitle(container)}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
@@ -119,7 +163,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
             </Badge>
             <UrlStatusIcon 
               status={container.urlStatus} 
-              lastChecked={container.urlLastChecked} 
+              lastChecked={container.urlLastChecked?.toString()} 
               error={container.urlCheckError} 
             />
           </div>
@@ -132,30 +176,47 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
               <Mic className="w-4 h-4 text-purple-600" />
               <span className="text-sm font-medium">Voice Instructions</span>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyInstructions}
-              className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
-              data-testid="copy-instructions-button"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3 h-3 mr-1" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3 mr-1" />
-                  Copy for 11Labs
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFullInstructions(true)}
+                className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
+                data-testid="view-full-instructions-button"
+              >
+                <Monitor className="w-3 h-3 mr-1" />
+                View Full
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyInstructions}
+                className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
+                data-testid="copy-instructions-button"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3 h-3 mr-1" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3 mr-1" />
+                    Copy for 11Labs
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded border border-purple-200 dark:border-purple-700 max-h-32 overflow-y-auto">
-            <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="voice-instructions">
-              {container.description || "No voice instructions provided"}
+          <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded border border-purple-200 dark:border-purple-700 max-h-24 overflow-hidden">
+            <p className="text-sm text-foreground line-clamp-3" data-testid="voice-instructions-preview">
+              {getFullInstructions()}
             </p>
+            {(getFullInstructions().length > 150) && (
+              <div className="text-xs text-purple-600 dark:text-purple-400 mt-2 italic">
+                Click "View Full" to see complete instructions...
+              </div>
+            )}
           </div>
         </div>
 
@@ -262,6 +323,88 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Instructions Modal */}
+      <Dialog open={showFullInstructions} onOpenChange={setShowFullInstructions}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mic className="w-5 h-5" />
+              {container.title} - Complete Instructions
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-muted-foreground">
+                {container.industry && (
+                  <span className="bg-purple-100 dark:bg-purple-900/50 px-2 py-1 rounded text-purple-700 dark:text-purple-300 mr-2">
+                    {container.industry}
+                  </span>
+                )}
+                {container.department && (
+                  <span className="bg-pink-100 dark:bg-pink-900/50 px-2 py-1 rounded text-pink-700 dark:text-pink-300">
+                    {container.department}
+                  </span>
+                )}
+              </div>
+              <Button
+                size="sm"
+                onClick={handleCopyInstructions}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                data-testid="copy-full-instructions-button"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 mr-2" />
+                    Copied to Clipboard!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Complete Instructions
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded border border-purple-200 dark:border-purple-700 max-h-[60vh] overflow-y-auto">
+              <pre className="text-sm text-foreground whitespace-pre-wrap font-mono leading-relaxed" data-testid="full-voice-instructions">
+                {getFullInstructions()}
+              </pre>
+            </div>
+            
+            {/* Agent Details */}
+            {((container as any).aiVoiceAgentType || (container as any).experienceLevel || (container as any).personality || (container as any).agentName) && (
+              <div className="grid grid-cols-2 gap-3 mt-4 p-3 bg-muted rounded">
+                <div className="text-sm">
+                  <strong>Agent Type:</strong> {(container as any).aiVoiceAgentType || 'N/A'}
+                </div>
+                <div className="text-sm">
+                  <strong>Experience:</strong> {(container as any).experienceLevel || 'N/A'}
+                </div>
+                <div className="text-sm">
+                  <strong>Name:</strong> {(container as any).agentName || 'N/A'}
+                </div>
+                <div className="text-sm">
+                  <strong>Personality:</strong> {(container as any).personality || 'N/A'}
+                </div>
+                {(container as any).specialization && (
+                  <div className="text-sm col-span-2">
+                    <strong>Specialization:</strong> {(container as any).specialization}
+                  </div>
+                )}
+                {(container as any).useCase && (
+                  <div className="text-sm col-span-2">
+                    <strong>Use Case:</strong> {(container as any).useCase}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground bg-muted p-3 rounded">
+              <strong>Instructions for 11Labs:</strong> Copy the complete text above and paste it into the "Voice Description" or "System Prompt" field when creating your AI voice agent. This prompt defines the voice's personality, expertise, and response style.
+            </div>
           </div>
         </DialogContent>
       </Dialog>

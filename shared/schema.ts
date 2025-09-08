@@ -77,6 +77,17 @@ export const containers = pgTable("containers", {
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  
+  // Additional voice agent specific fields
+  aiVoiceAgentType: varchar("ai_voice_agent_type"), // Type of voice agent functionality
+  experienceLevel: varchar("experience_level"), // e.g., "8+ years"
+  personality: varchar("personality"), // e.g., "analytical and detail-oriented"
+  agentName: varchar("agent_name"), // The name assigned to the voice agent
+  specialization: varchar("specialization"), // Specific area of expertise
+  useCase: varchar("use_case"), // Primary use case or scenario
+  targetAudience: varchar("target_audience"), // Who this voice is designed for
+  communicationStyle: varchar("communication_style"), // How the agent communicates
+  fullInstructions: text("full_instructions"), // Complete, untruncated instructions
 });
 
 // User permissions table for granular access control
