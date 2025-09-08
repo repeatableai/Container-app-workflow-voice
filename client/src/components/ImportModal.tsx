@@ -49,6 +49,8 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         
         if (activeTab === 'voice') {
+          console.log('Processing voice agent CSV import with activeTab:', activeTab);
+          console.log('CSV headers:', headers);
           // Simple CSV parsing: column positions are fixed
           // Column 0: Industry
           // Column 1: Job_Title  
@@ -140,7 +142,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           );
           
           if (urlColumnIndex === -1) {
-            throw new Error('CSV file must contain a URL column (url, link, source, or app)');
+            throw new Error('CSV file must contain a URL column (url, link, source, or app) for apps and workflows');
           }
         
           const urls = lines.slice(1)
@@ -296,6 +298,12 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       onOpenChange(false);
     } catch (error) {
       console.error('Import error:', error);
+      console.error('Error details:', { 
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        activeTab: activeTab,
+        type: typeof error
+      });
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Import Failed",
