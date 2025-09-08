@@ -59,11 +59,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         
         // For voice agents, convert JSONL format to container format
         if (activeTab === 'voice') {
-          // LIMIT to first 50 for testing
-          const limitedObjects = parsedObjects.slice(0, 50);
-          console.log(`Processing first ${limitedObjects.length} voice agents for testing`);
+          // Process all voice agents from JSONL
+          console.log(`Processing all ${parsedObjects.length} voice agents from JSONL`);
           
-          containersData = limitedObjects.map((obj, index) => {
+          containersData = parsedObjects.map((obj, index) => {
             // Extract fields using your exact column specification
             const industry = obj.Industry || obj.industry || 'General';
             const jobTitle = obj.Job_Title || obj.job_title || obj.jobTitle || 'Professional';
@@ -347,7 +346,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       
       // Create containers via bulk API for optimal performance
       let createdCount = 0;
-      const batchSize = 50; // Process in batches of 50 containers
+      const batchSize = 10; // Reduced batch size for large voice agent prompts
       const totalBatches = Math.ceil(containersData.length / batchSize);
       const startTime = Date.now();
       let batchTimes: number[] = [];
