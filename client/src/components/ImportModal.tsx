@@ -65,7 +65,9 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           
           try {
             // Use server-side URL analysis to bypass CORS restrictions
+            console.log('Analyzing URL:', url);
             const analysis = await apiRequest('POST', '/api/analyze-url', { url });
+            console.log('Analysis result:', analysis);
             
             containersData.push({
               title: analysis.title,
@@ -79,7 +81,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               isMarketplace: true
             });
           } catch (error) {
-            console.warn('Failed to analyze URL:', url, error);
+            console.error('Failed to analyze URL:', url, error);
             // Fallback for any analysis errors
             try {
               const hostname = new URL(url).hostname.replace('www.', '');
@@ -129,9 +131,11 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       onSuccess();
       onOpenChange(false);
     } catch (error) {
+      console.error('Import error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: "Error",
-        description: "Import failed. Please check your file format and try again.",
+        title: "Import Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
