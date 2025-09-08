@@ -49,27 +49,13 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         
         if (activeTab === 'voice') {
-          // Professional voice agents CSV with specific column structure
-          // Expected columns: Industry, Job_Title, Job_Task, AI_Voice_Agent_Type, ElevenLabs_Complete_Prompt, etc.
-          
-          const industryIndex = headers.findIndex(h => h.includes('industry'));
-          const jobTitleIndex = headers.findIndex(h => h.includes('job_title'));
-          const jobTaskIndex = headers.findIndex(h => h.includes('job_task'));
-          const aiVoiceAgentTypeIndex = headers.findIndex(h => h.includes('ai_voice_agent_type'));
-          const elevenLabsPromptIndex = headers.findIndex(h => h.includes('elevenlabs_complete_prompt'));
-          const productivityGainsIndex = headers.findIndex(h => h.includes('productivity_gains'));
-          const roiPotentialIndex = headers.findIndex(h => h.includes('roi_potential'));
-          const personalityProfileIndex = headers.findIndex(h => h.includes('personality_profile'));
-          const knowledgeRequirementsIndex = headers.findIndex(h => h.includes('knowledge_requirements'));
-          const efficiencyImprovementsIndex = headers.findIndex(h => h.includes('efficiency_improvements'));
-          
-          if (elevenLabsPromptIndex === -1) {
-            throw new Error('CSV file must contain an "ElevenLabs_Complete_Prompt" column for voice agents');
-          }
-          
-          if (industryIndex === -1 || jobTitleIndex === -1 || jobTaskIndex === -1) {
-            throw new Error('CSV file must contain Industry, Job_Title, and Job_Task columns for proper voice agent titles');
-          }
+          // Simple CSV parsing: column positions are fixed
+          // Column 0: Industry
+          // Column 1: Job_Title  
+          // Column 2: Job_Task
+          // Column 3: AI_Voice_Agent_Type
+          // Column 4: ElevenLabs_Complete_Prompt
+          // Column 5+: metadata
           
           const voiceAgents = lines.slice(1)
             .map((line, index) => {
@@ -91,21 +77,31 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               }
               columns.push(current.trim()); // Add the last column
               
-              const industry = columns[industryIndex]?.replace(/"/g, '').trim() || 'General';
-              const jobTitle = columns[jobTitleIndex]?.replace(/"/g, '').trim() || 'Professional';
-              const jobTask = columns[jobTaskIndex]?.replace(/"/g, '').trim() || 'Task';
-              const aiVoiceAgentType = columns[aiVoiceAgentTypeIndex]?.replace(/"/g, '').trim() || '';
-              const elevenLabsPrompt = columns[elevenLabsPromptIndex]?.replace(/"/g, '').trim();
-              const productivityGains = columns[productivityGainsIndex]?.replace(/"/g, '').trim() || '';
-              const roiPotential = columns[roiPotentialIndex]?.replace(/"/g, '').trim() || '';
-              const personalityProfile = columns[personalityProfileIndex]?.replace(/"/g, '').trim() || '';
-              const knowledgeRequirements = columns[knowledgeRequirementsIndex]?.replace(/"/g, '').trim() || '';
-              const efficiencyImprovements = columns[efficiencyImprovementsIndex]?.replace(/"/g, '').trim() || '';
+              // Simple column access by position
+              const industry = columns[0]?.replace(/"/g, '').trim() || 'General';
+              const jobTitle = columns[1]?.replace(/"/g, '').trim() || 'Professional';
+              const jobTask = columns[2]?.replace(/"/g, '').trim() || 'Task';
+              const aiVoiceAgentType = columns[3]?.replace(/"/g, '').trim() || '';
+              const elevenLabsPrompt = columns[4]?.replace(/"/g, '').trim();
               
-              if (!elevenLabsPrompt || elevenLabsPrompt.length < 50) return null; // Skip invalid entries
+              // Metadata from remaining columns (5+)
+              const productivityGains = columns[5]?.replace(/"/g, '').trim() || '';
+              const roiPotential = columns[6]?.replace(/"/g, '').trim() || '';
+              const efficiencyImprovements = columns[7]?.replace(/"/g, '').trim() || '';
+              const personalityProfile = columns[8]?.replace(/"/g, '').trim() || '';
+              const knowledgeRequirements = columns[9]?.replace(/"/g, '').trim() || '';
+              const useCase = columns[10]?.replace(/"/g, '').trim() || '';
+              const implementationNotes = columns[11]?.replace(/"/g, '').trim() || '';
               
-              // Create smart title: "Industry - Job_Title - Job_Task"
-              const smartTitle = `${industry} - ${jobTitle} - ${jobTask}`;
+              if (!elevenLabsPrompt || elevenLabsPrompt.length < 50) {
+                console.log(`Skipping row ${index + 1}: invalid or short prompt`);
+                return null;
+              }
+              
+              // Create title from first 4 columns: "Industry - Job_Title - Job_Task - AI_Voice_Agent_Type"
+              const smartTitle = `${industry} - ${jobTitle} - ${jobTask} - ${aiVoiceAgentType}`;
+              
+              console.log(`Row ${index + 1}: Creating voice agent "${smartTitle}"`);
               
               return {
                 title: smartTitle,
@@ -118,12 +114,12 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 tags: [industry, jobTitle, aiVoiceAgentType, 'imported', 'csv', '11labs'].filter(Boolean),
                 url: '', // Voice agents don't need URLs
                 isMarketplace: true,
-                // Enhanced voice agent metadata
+                // Enhanced voice agent metadata (stored but not displayed)
                 aiVoiceAgentType: aiVoiceAgentType,
                 personality: personalityProfile,
                 experienceLevel: 'Professional', // Default for these agents
                 specialization: knowledgeRequirements,
-                useCase: jobTask,
+                useCase: useCase,
                 productivityGains: productivityGains,
                 roiPotential: roiPotential,
                 efficiencyImprovements: efficiencyImprovements
@@ -132,10 +128,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             .filter(Boolean);
           
           if (voiceAgents.length === 0) {
-            throw new Error('No valid voice agent prompts found in CSV file. Please check the ElevenLabs_Complete_Prompt column.');
+            throw new Error('No valid voice agent prompts found in CSV file. Please check that column 5 contains the ElevenLabs_Complete_Prompt.');
           }
           
-          console.log(`Parsed ${voiceAgents.length} voice agents from CSV`);
+          console.log(`Successfully parsed ${voiceAgents.length} unique voice agents from CSV`);
           containersData = voiceAgents;
         } else {
           // Apps/Workflows: use URL analysis (existing behavior)

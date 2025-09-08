@@ -147,8 +147,8 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
                 <Mic className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-foreground text-base truncate" data-testid="container-title">
-                  {generateDisplayTitle(container)}
+                <h3 className="font-semibold text-foreground text-base line-clamp-2 break-words" data-testid="container-title">
+                  {container.title}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
@@ -209,7 +209,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
             </div>
           </div>
           <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded border border-purple-200 dark:border-purple-700 max-h-24 overflow-hidden">
-            <p className="text-sm text-foreground line-clamp-3" data-testid="voice-instructions-preview">
+            <p className="text-sm text-foreground line-clamp-3 break-words" data-testid="voice-instructions-preview">
               {getFullInstructions()}
             </p>
             {(getFullInstructions().length > 150) && (
