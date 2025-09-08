@@ -739,6 +739,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                   if (files.length > 0) {
                     const file = files[0];
                     if (file.type === 'application/json' || file.name.endsWith('.json') ||
+                        file.name.endsWith('.jsonl') ||
                         file.type === 'text/csv' || file.name.endsWith('.csv') ||
                         file.type === 'application/zip' || file.name.endsWith('.zip')) {
                       handleFileImport(file);
