@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Download, Globe } from "lucide-react";
+import { Upload, FileText, Download, Globe, Clock, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -23,6 +23,16 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   const [importType, setImportType] = useState<'file' | 'url' | 'json'>('file');
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0, currentUrl: '' });
+  const [bulkProgress, setBulkProgress] = useState({ 
+    currentBatch: 0, 
+    totalBatches: 0, 
+    totalItems: 0,
+    processedItems: 0,
+    startTime: 0,
+    avgBatchTime: 0,
+    eta: 0,
+    speed: 0 
+  });
 
   const handleFileImport = async (file: File) => {
     setIsImporting(true);
@@ -107,7 +117,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             try {
               // Use server-side URL analysis to bypass CORS restrictions
               console.log('Analyzing URL:', url);
-              const analysis = await apiRequest('POST', '/api/analyze-url', { url });
+              const analysis = await apiRequest('POST', '/api/analyze-url', { url }) as any;
               console.log('Analysis result:', analysis);
               
               containersData.push({
@@ -158,22 +168,64 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       // Create containers via bulk API for optimal performance
       let createdCount = 0;
       const batchSize = 50; // Process in batches of 50 containers
+      const totalBatches = Math.ceil(containersData.length / batchSize);
+      const startTime = Date.now();
+      let batchTimes: number[] = [];
+      
+      // Initialize bulk progress tracking
+      setBulkProgress({
+        currentBatch: 0,
+        totalBatches,
+        totalItems: containersData.length,
+        processedItems: 0,
+        startTime,
+        avgBatchTime: 0,
+        eta: 0,
+        speed: 0
+      });
       
       console.log(`Starting bulk import of ${containersData.length} containers in batches of ${batchSize}`);
       
       for (let i = 0; i < containersData.length; i += batchSize) {
         const batch = containersData.slice(i, i + batchSize);
-        console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(containersData.length / batchSize)}: ${batch.length} containers`);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+        const batchStartTime = Date.now();
+        
+        console.log(`Processing batch ${batchNumber}/${totalBatches}: ${batch.length} containers`);
         
         try {
           const response = await apiRequest('POST', '/api/containers/bulk', {
             containers: batch
-          });
+          }) as any;
+          
+          const batchEndTime = Date.now();
+          const batchDuration = batchEndTime - batchStartTime;
+          batchTimes.push(batchDuration);
           
           createdCount += response.created || batch.length;
-          console.log(`Batch complete: ${response.created || batch.length} containers created`);
+          console.log(`Batch complete: ${response.created || batch.length} containers created in ${batchDuration}ms`);
+          
+          // Calculate performance metrics
+          const avgBatchTime = batchTimes.reduce((sum, time) => sum + time, 0) / batchTimes.length;
+          const remainingBatches = totalBatches - batchNumber;
+          const eta = remainingBatches * avgBatchTime;
+          const elapsedTime = Date.now() - startTime;
+          const speed = createdCount / (elapsedTime / 1000); // items per second
+          
+          // Update progress
+          setBulkProgress({
+            currentBatch: batchNumber,
+            totalBatches,
+            totalItems: containersData.length,
+            processedItems: createdCount,
+            startTime,
+            avgBatchTime,
+            eta,
+            speed
+          });
+          
         } catch (error) {
-          console.warn(`Batch ${Math.floor(i / batchSize) + 1} failed:`, error);
+          console.warn(`Batch ${batchNumber} failed:`, error);
           // Fallback to individual processing for this batch if bulk fails
           for (const containerData of batch) {
             try {
@@ -207,6 +259,16 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       });
     } finally {
       setIsImporting(false);
+      setBulkProgress({ 
+        currentBatch: 0, 
+        totalBatches: 0, 
+        totalItems: 0,
+        processedItems: 0,
+        startTime: 0,
+        avgBatchTime: 0,
+        eta: 0,
+        speed: 0 
+      });
     }
   };
 
@@ -606,6 +668,76 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                   <p className="text-xs text-muted-foreground">
                     Extracting titles, descriptions, and app features from each URL...
                   </p>
+                </div>
+              )}
+
+              {/* Progress indicator for bulk import */}
+              {isImporting && bulkProgress.totalBatches > 0 && (
+                <div className="space-y-4 p-4 bg-gradient-to-r from-primary/5 to-secondary/5 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 animate-pulse text-primary" />
+                      <span className="text-sm font-semibold">
+                        High-Speed Bulk Import
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {bulkProgress.eta > 0 && (
+                        <span>ETA: {Math.ceil(bulkProgress.eta / 1000)}s</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>
+                        Batch {bulkProgress.currentBatch}/{bulkProgress.totalBatches}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {Math.round((bulkProgress.currentBatch / bulkProgress.totalBatches) * 100)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(bulkProgress.currentBatch / bulkProgress.totalBatches) * 100} 
+                      className="w-full h-2" 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Items</span>
+                        <span className="font-medium">
+                          {bulkProgress.processedItems.toLocaleString()}/{bulkProgress.totalItems.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Speed</span>
+                        <span className="font-medium text-green-600">
+                          {Math.round(bulkProgress.speed)} /sec
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Avg Batch</span>
+                        <span className="font-medium">
+                          {Math.round(bulkProgress.avgBatchTime)}ms
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Remaining</span>
+                        <span className="font-medium">
+                          {bulkProgress.totalBatches - bulkProgress.currentBatch} batches
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground text-center">
+                    🚀 Processing {bulkProgress.currentBatch > 0 ? '50' : '...'} {activeTab}s per batch with optimized bulk operations
+                  </div>
                 </div>
               )}
             </div>
