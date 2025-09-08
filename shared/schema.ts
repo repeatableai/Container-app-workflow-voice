@@ -88,6 +88,11 @@ export const containers = pgTable("containers", {
   targetAudience: varchar("target_audience"), // Who this voice is designed for
   communicationStyle: varchar("communication_style"), // How the agent communicates
   fullInstructions: text("full_instructions"), // Complete, untruncated instructions
+  
+  // Additional metadata from professional voice agent CSV
+  productivityGains: text("productivity_gains"),
+  roiPotential: text("roi_potential"),
+  efficiencyImprovements: text("efficiency_improvements"),
 });
 
 // User permissions table for granular access control

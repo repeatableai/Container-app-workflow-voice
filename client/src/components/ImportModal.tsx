@@ -49,44 +49,93 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         
         if (activeTab === 'voice') {
-          // Voice agents: look for instructions/prompt column
-          const instructionsColumnIndex = headers.findIndex(h => 
-            h.includes('instructions') || h.includes('prompt') || h.includes('description') || h.includes('content')
-          );
+          // Professional voice agents CSV with specific column structure
+          // Expected columns: Industry, Job_Title, Job_Task, AI_Voice_Agent_Type, ElevenLabs_Complete_Prompt, etc.
           
-          if (instructionsColumnIndex === -1) {
-            throw new Error('CSV file must contain an instructions column (instructions, prompt, description, or content) for voice agents');
+          const industryIndex = headers.findIndex(h => h.includes('industry'));
+          const jobTitleIndex = headers.findIndex(h => h.includes('job_title'));
+          const jobTaskIndex = headers.findIndex(h => h.includes('job_task'));
+          const aiVoiceAgentTypeIndex = headers.findIndex(h => h.includes('ai_voice_agent_type'));
+          const elevenLabsPromptIndex = headers.findIndex(h => h.includes('elevenlabs_complete_prompt'));
+          const productivityGainsIndex = headers.findIndex(h => h.includes('productivity_gains'));
+          const roiPotentialIndex = headers.findIndex(h => h.includes('roi_potential'));
+          const personalityProfileIndex = headers.findIndex(h => h.includes('personality_profile'));
+          const knowledgeRequirementsIndex = headers.findIndex(h => h.includes('knowledge_requirements'));
+          const efficiencyImprovementsIndex = headers.findIndex(h => h.includes('efficiency_improvements'));
+          
+          if (elevenLabsPromptIndex === -1) {
+            throw new Error('CSV file must contain an "ElevenLabs_Complete_Prompt" column for voice agents');
           }
           
-          // Also look for optional title column
-          const titleColumnIndex = headers.findIndex(h => h.includes('title') || h.includes('name'));
+          if (industryIndex === -1 || jobTitleIndex === -1 || jobTaskIndex === -1) {
+            throw new Error('CSV file must contain Industry, Job_Title, and Job_Task columns for proper voice agent titles');
+          }
           
           const voiceAgents = lines.slice(1)
             .map((line, index) => {
-              const columns = line.split(',');
-              const instructions = columns[instructionsColumnIndex]?.trim();
-              const title = titleColumnIndex >= 0 ? columns[titleColumnIndex]?.trim() : `Voice Agent ${index + 1}`;
+              // Handle CSV parsing with quoted fields that may contain commas
+              const columns = [];
+              let current = '';
+              let inQuotes = false;
               
-              if (!instructions) return null;
+              for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  columns.push(current.trim());
+                  current = '';
+                } else {
+                  current += char;
+                }
+              }
+              columns.push(current.trim()); // Add the last column
+              
+              const industry = columns[industryIndex]?.replace(/"/g, '').trim() || 'General';
+              const jobTitle = columns[jobTitleIndex]?.replace(/"/g, '').trim() || 'Professional';
+              const jobTask = columns[jobTaskIndex]?.replace(/"/g, '').trim() || 'Task';
+              const aiVoiceAgentType = columns[aiVoiceAgentTypeIndex]?.replace(/"/g, '').trim() || '';
+              const elevenLabsPrompt = columns[elevenLabsPromptIndex]?.replace(/"/g, '').trim();
+              const productivityGains = columns[productivityGainsIndex]?.replace(/"/g, '').trim() || '';
+              const roiPotential = columns[roiPotentialIndex]?.replace(/"/g, '').trim() || '';
+              const personalityProfile = columns[personalityProfileIndex]?.replace(/"/g, '').trim() || '';
+              const knowledgeRequirements = columns[knowledgeRequirementsIndex]?.replace(/"/g, '').trim() || '';
+              const efficiencyImprovements = columns[efficiencyImprovementsIndex]?.replace(/"/g, '').trim() || '';
+              
+              if (!elevenLabsPrompt || elevenLabsPrompt.length < 50) return null; // Skip invalid entries
+              
+              // Create smart title: "Industry - Job_Title - Job_Task"
+              const smartTitle = `${industry} - ${jobTitle} - ${jobTask}`;
               
               return {
-                title: title || `Voice Agent ${index + 1}`,
-                description: instructions,
+                title: smartTitle,
+                description: elevenLabsPrompt.substring(0, 500) + '...', // Truncated for description
+                fullInstructions: elevenLabsPrompt, // Complete prompt for copy/paste
                 type: activeTab,
-                industry: 'AI Voice',
-                department: '',
+                industry: industry,
+                department: jobTitle,
                 visibility: 'public',
-                tags: ['imported', 'csv', 'voice', 'instructions'],
-                url: '', // Voice agents don't need URLs - instructions are in description
-                isMarketplace: true
+                tags: [industry, jobTitle, aiVoiceAgentType, 'imported', 'csv', '11labs'].filter(Boolean),
+                url: '', // Voice agents don't need URLs
+                isMarketplace: true,
+                // Enhanced voice agent metadata
+                aiVoiceAgentType: aiVoiceAgentType,
+                personality: personalityProfile,
+                experienceLevel: 'Professional', // Default for these agents
+                specialization: knowledgeRequirements,
+                useCase: jobTask,
+                productivityGains: productivityGains,
+                roiPotential: roiPotential,
+                efficiencyImprovements: efficiencyImprovements
               };
             })
             .filter(Boolean);
           
           if (voiceAgents.length === 0) {
-            throw new Error('No valid voice agent instructions found in CSV file');
+            throw new Error('No valid voice agent prompts found in CSV file. Please check the ElevenLabs_Complete_Prompt column.');
           }
           
+          console.log(`Parsed ${voiceAgents.length} voice agents from CSV`);
           containersData = voiceAgents;
         } else {
           // Apps/Workflows: use URL analysis (existing behavior)
