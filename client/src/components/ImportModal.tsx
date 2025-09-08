@@ -21,6 +21,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   const { toast } = useToast();
   const [importType, setImportType] = useState<'file' | 'url' | 'json'>('file');
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, currentUrl: '' });
 
   const handleFileImport = async (file: File) => {
     setIsImporting(true);
@@ -32,36 +33,98 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         const jsonData = JSON.parse(fileContent);
         containersData = Array.isArray(jsonData) ? jsonData : (jsonData.containers || [jsonData]);
       } else if (file.name.endsWith('.csv')) {
-        // Simple CSV parsing - assumes first row is headers
+        // Enhanced CSV parsing with URL analysis
         const lines = fileContent.split('\n').filter(line => line.trim());
-        const headers = lines[0].split(',').map(h => h.trim());
-        containersData = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim());
-          const container: any = {};
-          headers.forEach((header, index) => {
-            container[header] = values[index] || '';
-          });
-          return container;
-        });
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Find URL column (supports various header names)
+        const urlColumnIndex = headers.findIndex(h => 
+          h.includes('url') || h.includes('link') || h.includes('source') || h.includes('app')
+        );
+        
+        if (urlColumnIndex === -1) {
+          throw new Error('CSV file must contain a URL column (url, link, source, or app)');
+        }
+        
+        const urls = lines.slice(1)
+          .map(line => line.split(',')[urlColumnIndex]?.trim())
+          .filter(Boolean);
+        
+        if (urls.length === 0) {
+          throw new Error('No URLs found in CSV file');
+        }
+        
+        // Analyze each URL with progress tracking
+        setImportProgress({ current: 0, total: urls.length, currentUrl: '' });
+        containersData = [];
+        
+        for (let index = 0; index < urls.length; index++) {
+          const url = urls[index];
+          setImportProgress({ current: index + 1, total: urls.length, currentUrl: url });
+          
+          try {
+            // Validate URL
+            new URL(url);
+            
+            // Fetch and analyze the webpage
+            const response = await fetch(url, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              }
+            });
+            
+            if (response.ok) {
+              const html = await response.text();
+              const analysis = analyzeAppContent(html, url);
+              
+              containersData.push({
+                title: analysis.title,
+                description: analysis.description,
+                type: activeTab,
+                industry: analysis.appType || '',
+                department: '',
+                visibility: 'public',
+                tags: ['imported', 'csv', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
+                url: url,
+                isMarketplace: true
+              });
+            } else {
+              // Fallback for failed requests
+              containersData.push({
+                title: `App from ${new URL(url).hostname}`,
+                description: `Application imported from ${url}`,
+                type: activeTab,
+                industry: '',
+                department: '',
+                visibility: 'public',
+                tags: ['imported', 'csv'],
+                url: url,
+                isMarketplace: true
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to analyze URL:', url, error);
+            // Fallback for invalid URLs or fetch errors
+            containersData.push({
+              title: `App ${index + 1}`,
+              description: `Application from ${url}`,
+              type: activeTab,
+              industry: '',
+              department: '',
+              visibility: 'public',
+              tags: ['imported', 'csv'],
+              url: url,
+              isMarketplace: true
+            });
+          }
+        }
       }
       
-      // Create containers via API
+      // Create containers via API with enhanced data
       let createdCount = 0;
       for (const containerData of containersData) {
         try {
-          const containerToCreate = {
-            title: containerData.title || containerData.name || 'Imported Container',
-            description: containerData.description || '',
-            type: activeTab,
-            industry: containerData.industry || '',
-            department: containerData.department || '',
-            visibility: containerData.visibility || 'public',
-            tags: Array.isArray(containerData.tags) ? containerData.tags : [],
-            isMarketplace: true,
-            ...containerData
-          };
-          
-          await apiRequest('POST', '/api/containers', containerToCreate);
+          await apiRequest('POST', '/api/containers', containerData);
           createdCount++;
         } catch (error) {
           console.warn('Failed to create container:', containerData, error);
