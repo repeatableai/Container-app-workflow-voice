@@ -37,6 +37,7 @@ export interface IStorage {
     department?: string;
     visibility?: string;
     search?: string;
+    isMarketplace?: boolean;
     userId?: string;
   }): Promise<Container[]>;
   getContainerById(id: string): Promise<Container | undefined>;
@@ -103,6 +104,7 @@ export class DatabaseStorage implements IStorage {
     department?: string;
     visibility?: string;
     search?: string;
+    isMarketplace?: boolean;
     userId?: string;
   }): Promise<Container[]> {
     let query = db.select().from(containers);
@@ -122,6 +124,10 @@ export class DatabaseStorage implements IStorage {
     
     if (filters?.visibility) {
       conditions.push(eq(containers.visibility, filters.visibility as any));
+    }
+    
+    if (filters?.isMarketplace !== undefined) {
+      conditions.push(eq(containers.isMarketplace, filters.isMarketplace));
     }
     
     if (filters?.search) {

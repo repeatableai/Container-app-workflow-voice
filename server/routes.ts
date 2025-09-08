@@ -58,6 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         department: department as string,
         visibility: visibility as string,
         search: search as string,
+        isMarketplace: false, // Only non-marketplace containers for regular use
         userId,
       });
 
@@ -65,6 +66,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching containers:", error);
       res.status(500).json({ message: "Failed to fetch containers" });
+    }
+  });
+
+  // Marketplace containers endpoint
+  app.get('/api/containers/marketplace', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const permissions = await storage.getUserPermissions(userId);
+      
+      if (!user || !permissions) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { type, industry, department, visibility, search } = req.query;
+      
+      // Check permissions for container types
+      if (type) {
+        if (type === 'app' && !permissions.canAccessApps) {
+          return res.status(403).json({ message: "No access to apps" });
+        }
+        if (type === 'voice' && !permissions.canAccessVoices) {
+          return res.status(403).json({ message: "No access to voices" });
+        }
+        if (type === 'workflow' && !permissions.canAccessWorkflows) {
+          return res.status(403).json({ message: "No access to workflows" });
+        }
+      }
+
+      const containers = await storage.getContainers({
+        type: type as string,
+        industry: industry as string,
+        department: department as string,
+        visibility: visibility as string,
+        search: search as string,
+        isMarketplace: true, // Only marketplace containers for library
+        userId,
+      });
+
+      res.json(containers);
+    } catch (error) {
+      console.error("Error fetching marketplace containers:", error);
+      res.status(500).json({ message: "Failed to fetch marketplace containers" });
     }
   });
 

@@ -45,9 +45,9 @@ export default function Library() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch containers for library browsing
+  // Fetch containers for library browsing (marketplace only)
   const { data: containers = [], isLoading: containersLoading } = useQuery<Container[]>({
-    queryKey: ['/api/containers', activeTab, searchQuery, filters],
+    queryKey: ['/api/containers/marketplace', activeTab, searchQuery, filters],
     enabled: isAuthenticated,
     retry: false,
   });
