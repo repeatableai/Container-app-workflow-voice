@@ -85,43 +85,128 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     }
   };
 
-  const extractMetaFromHTML = (html: string, url: string) => {
-    // Create a temporary DOM parser
+  const analyzeAppContent = (html: string, url: string) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Extract title
-    let title = doc.querySelector('title')?.textContent || '';
-    if (!title) {
-      title = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '';
-    }
-    if (!title) {
-      title = doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') || '';
-    }
-    if (!title) {
-      // Fallback to URL-based title
-      const urlObj = new URL(url);
-      title = urlObj.hostname.replace('www.', '') + ' - ' + urlObj.pathname.split('/').filter(Boolean).join(' ');
+    // Enhanced title extraction with intelligent analysis
+    let title = '';
+    let appType = '';
+    let features = [];
+    
+    // 1. Try standard meta tags first
+    title = doc.querySelector('title')?.textContent ||
+            doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+            doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') || '';
+    
+    // 2. Analyze page structure for app type and better title
+    const headings = Array.from(doc.querySelectorAll('h1, h2, h3')).map(h => h.textContent?.trim()).filter(Boolean);
+    const buttons = Array.from(doc.querySelectorAll('button, .btn, [role="button"]')).map(b => b.textContent?.trim().toLowerCase()).filter(Boolean);
+    const inputs = Array.from(doc.querySelectorAll('input, textarea, select'));
+    const canvases = doc.querySelectorAll('canvas');
+    const videos = doc.querySelectorAll('video');
+    const forms = doc.querySelectorAll('form');
+    
+    // Detect app type based on elements and functionality
+    if (canvases.length > 0) {
+      appType = 'Drawing/Graphics';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Creative Drawing Canvas';
+      }
+      features.push('canvas drawing', 'graphics tools');
+    } else if (videos.length > 0 || buttons.some(b => b.includes('play') || b.includes('pause'))) {
+      appType = 'Media Player';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Media Player Application';
+      }
+      features.push('video playback', 'media controls');
+    } else if (buttons.some(b => b.includes('chat') || b.includes('send') || b.includes('message'))) {
+      appType = 'Communication';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Chat Application';
+      }
+      features.push('messaging', 'real-time communication');
+    } else if (buttons.some(b => b.includes('task') || b.includes('todo') || b.includes('complete'))) {
+      appType = 'Productivity';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Task Management Tool';
+      }
+      features.push('task tracking', 'productivity management');
+    } else if (buttons.some(b => b.includes('calendar') || b.includes('schedule') || b.includes('event'))) {
+      appType = 'Calendar/Scheduling';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Calendar Scheduler';
+      }
+      features.push('event scheduling', 'calendar management');
+    } else if (inputs.length > 3 || forms.length > 0) {
+      appType = 'Data Management';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Data Entry Application';
+      }
+      features.push('form handling', 'data collection');
+    } else if (buttons.some(b => b.includes('edit') || b.includes('save') || b.includes('code'))) {
+      appType = 'Editor';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Code Editor';
+      }
+      features.push('text editing', 'code management');
+    } else if (doc.querySelector('.chart, .graph, canvas[id*="chart"]')) {
+      appType = 'Analytics/Dashboard';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Analytics Dashboard';
+      }
+      features.push('data visualization', 'analytics');
+    } else {
+      appType = 'Web Application';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || `${new URL(url).hostname.replace('www.', '')} App`;
+      }
     }
     
-    // Extract description
-    let description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
-    if (!description) {
-      description = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || '';
+    // Clean up title
+    title = title.replace(/localhost:\d+/g, '').replace(/index\.html?/g, '').trim();
+    if (!title) {
+      const urlObj = new URL(url);
+      title = `${urlObj.hostname.replace('www.', '')} Application`;
     }
-    if (!description) {
-      description = doc.querySelector('meta[name="twitter:description"]')?.getAttribute('content') || '';
-    }
-    if (!description) {
-      // Fallback to first paragraph or heading
-      const firstP = doc.querySelector('p');
-      const firstH = doc.querySelector('h1, h2, h3');
-      description = firstP?.textContent?.slice(0, 200) || firstH?.textContent?.slice(0, 100) || 'No description available';
+    
+    // Generate intelligent description
+    let description = doc.querySelector('meta[name="description"]')?.getAttribute('content') ||
+                     doc.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
+                     doc.querySelector('meta[name="twitter:description"]')?.getAttribute('content') || '';
+    
+    if (!description || description.length < 20) {
+      // Generate description based on analysis
+      const featureText = features.length > 0 ? ` with ${features.join(', ')}` : '';
+      const mainHeading = headings[0] ? ` - ${headings[0]}` : '';
+      
+      description = `A ${appType.toLowerCase()} application${featureText}. `;
+      
+      if (buttons.length > 0) {
+        const keyActions = buttons.slice(0, 3).join(', ');
+        description += `Features include: ${keyActions}. `;
+      }
+      
+      if (mainHeading && !description.includes(headings[0])) {
+        description += mainHeading;
+      }
+      
+      description = description.trim();
+      
+      // Fallback to content analysis
+      if (description.length < 50) {
+        const firstP = doc.querySelector('p')?.textContent?.slice(0, 150);
+        if (firstP && firstP.length > 20) {
+          description = firstP + '...';
+        }
+      }
     }
     
     return {
       title: title.trim(),
-      description: description.trim()
+      description: description.trim() || `A ${appType.toLowerCase()} with interactive features and modern web technologies.`,
+      appType,
+      features
     };
   };
 
@@ -176,18 +261,18 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           description: `${createdCount} ${activeTab}${createdCount !== 1 ? 's' : ''} imported successfully`,
         });
       } else {
-        // Handle HTML/webpage URLs
+        // Handle HTML/webpage URLs with intelligent analysis
         const html = await response.text();
-        const { title, description } = extractMetaFromHTML(html, url);
+        const analysis = analyzeAppContent(html, url);
         
         const containerToCreate = {
-          title: title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
-          description: description || `Imported ${activeTab} from ${url}`,
+          title: analysis.title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
+          description: analysis.description || `Imported ${activeTab} from ${url}`,
           type: activeTab,
-          industry: '',
+          industry: analysis.appType || '',
           department: '',
           visibility: 'public' as const,
-          tags: ['imported', 'url'],
+          tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
           url: url,
           isMarketplace: true
         };
