@@ -3,21 +3,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, Eye, ExternalLink, Star, Users, Calendar, Monitor } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Download, Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit } from "lucide-react";
 import type { Container } from "@shared/schema";
 
 interface AppCardProps {
   container: Container;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit?: (id: string, updates: Partial<Container>) => void;
   canDelete?: boolean;
+  canEdit?: boolean;
 }
 
-export default function AppCard({ container, onView, onDelete, canDelete }: AppCardProps) {
+export default function AppCard({ container, onView, onDelete, onEdit, canDelete, canEdit = true }: AppCardProps) {
   const [isInstalling, setIsInstalling] = useState(false);
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleInstall = async () => {
     setIsInstalling(true);
@@ -50,6 +56,32 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
       window.open(container.url, '_blank');
       setShowIframe(false);
     }
+  };
+
+  const [editForm, setEditForm] = useState({
+    title: container.title,
+    description: container.description || '',
+    url: container.url || ''
+  });
+
+  const handleEdit = () => {
+    setEditForm({
+      title: container.title,
+      description: container.description || '',
+      url: container.url || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (onEdit) {
+      onEdit(container.id, {
+        title: editForm.title,
+        description: editForm.description,
+        url: editForm.url
+      });
+    }
+    setShowEditModal(false);
   };
 
   const formatDate = (date: Date | string | null | undefined) => {
@@ -137,6 +169,16 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
             <Download className="w-4 h-4 mr-2" />
             {isInstalling ? 'Installing...' : 'Install'}
           </Button>
+          {canEdit && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleEdit}
+              data-testid="edit-button"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
           {container.url && (
             <Button 
               variant="outline" 
@@ -244,6 +286,59 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
               <ExternalLink className="w-4 h-4 mr-2" />
               Open in New Tab
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5" />
+              Edit Container
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-title">Title</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm(prev => ({...prev, title: e.target.value}))}
+                placeholder="Container title"
+                data-testid="edit-title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({...prev, description: e.target.value}))}
+                placeholder="Container description"
+                rows={3}
+                data-testid="edit-description"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-url">URL</Label>
+              <Input
+                id="edit-url"
+                value={editForm.url}
+                onChange={(e) => setEditForm(prev => ({...prev, url: e.target.value}))}
+                placeholder="Container URL"
+                data-testid="edit-url"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} data-testid="save-edit">
+                Save Changes
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -96,6 +96,39 @@ export default function Library() {
     }
   };
 
+  const handleContainerEdit = async (id: string, updates: Partial<Container>) => {
+    try {
+      console.log(`Editing container ${id}:`, updates);
+      const response = await fetch(`/api/containers/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update container: ${response.statusText}`);
+      }
+      
+      // Invalidate and refetch containers
+      queryClient.invalidateQueries({ queryKey: ['marketplace-containers'] });
+      
+      toast({
+        title: "Success",
+        description: "Container updated successfully",
+      });
+    } catch (error) {
+      console.error('Failed to update container:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update container. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleAddToOrganization = async (containerId: string) => {
     try {
       // This would be the "purchase" or "add to organization" functionality
@@ -305,6 +338,7 @@ export default function Library() {
                         key={container.id}
                         container={container}
                         onView={handleContainerView}
+                        onEdit={handleContainerEdit}
                         onDelete={() => {}}
                         canDelete={false}
                         data-testid={`app-card-${container.id}`}
@@ -317,6 +351,7 @@ export default function Library() {
                         key={container.id}
                         container={container}
                         onView={handleContainerView}
+                        onEdit={handleContainerEdit}
                         onDelete={() => {}}
                         canDelete={false}
                         data-testid={`voice-card-${container.id}`}
@@ -329,6 +364,7 @@ export default function Library() {
                         key={container.id}
                         container={container}
                         onView={handleContainerView}
+                        onEdit={handleContainerEdit}
                         onDelete={() => {}}
                         canDelete={false}
                         data-testid={`workflow-card-${container.id}`}
