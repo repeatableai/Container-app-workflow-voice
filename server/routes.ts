@@ -368,6 +368,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk container creation endpoint for fast imports
+  app.post('/api/containers/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { containers } = req.body;
+      
+      if (!Array.isArray(containers) || containers.length === 0) {
+        return res.status(400).json({ message: "containers array is required and must not be empty" });
+      }
+
+      if (containers.length > 100) {
+        return res.status(400).json({ message: "Maximum 100 containers per batch" });
+      }
+
+      // Validate and prepare all container data
+      const containerDataList = containers.map(container => 
+        insertContainerSchema.parse({
+          ...container,
+          createdBy: userId,
+        })
+      );
+
+      console.log(`Creating bulk batch of ${containerDataList.length} containers for user ${userId}`);
+
+      // Use bulk create method for optimal performance
+      const createdContainers = await storage.createContainersBulk(containerDataList);
+      
+      res.status(201).json({ 
+        success: true, 
+        created: createdContainers.length,
+        containers: createdContainers 
+      });
+    } catch (error) {
+      console.error("Error creating containers in bulk:", error);
+      res.status(500).json({ message: "Failed to create containers in bulk" });
+    }
+  });
+
   // Bulk re-analyze existing containers (admin only)
   app.post('/api/bulk-reanalyze', isAuthenticated, async (req: any, res) => {
     try {

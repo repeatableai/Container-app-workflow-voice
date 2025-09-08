@@ -155,14 +155,39 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         }
       }
       
-      // Create containers via API with enhanced data
+      // Create containers via bulk API for optimal performance
       let createdCount = 0;
-      for (const containerData of containersData) {
+      const batchSize = 50; // Process in batches of 50 containers
+      
+      console.log(`Starting bulk import of ${containersData.length} containers in batches of ${batchSize}`);
+      
+      for (let i = 0; i < containersData.length; i += batchSize) {
+        const batch = containersData.slice(i, i + batchSize);
+        console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(containersData.length / batchSize)}: ${batch.length} containers`);
+        
         try {
-          await apiRequest('POST', '/api/containers', containerData);
-          createdCount++;
+          const response = await apiRequest('POST', '/api/containers/bulk', {
+            containers: batch
+          });
+          
+          createdCount += response.created || batch.length;
+          console.log(`Batch complete: ${response.created || batch.length} containers created`);
         } catch (error) {
-          console.warn('Failed to create container:', containerData, error);
+          console.warn(`Batch ${Math.floor(i / batchSize) + 1} failed:`, error);
+          // Fallback to individual processing for this batch if bulk fails
+          for (const containerData of batch) {
+            try {
+              await apiRequest('POST', '/api/containers', containerData);
+              createdCount++;
+            } catch (individualError) {
+              console.warn('Failed to create individual container:', containerData, individualError);
+            }
+          }
+        }
+        
+        // Small delay between batches to avoid overwhelming the server
+        if (i + batchSize < containersData.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
       

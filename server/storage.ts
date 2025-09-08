@@ -159,6 +159,26 @@ export class DatabaseStorage implements IStorage {
     return newContainer;
   }
 
+  async createContainersBulk(containerDataList: InsertContainer[]): Promise<Container[]> {
+    if (containerDataList.length === 0) {
+      return [];
+    }
+    
+    console.log(`[BULK CREATE] Processing ${containerDataList.length} containers`);
+    const startTime = Date.now();
+    
+    // Use Drizzle's bulk insert for optimal performance
+    const createdContainers = await db
+      .insert(containers)
+      .values(containerDataList)
+      .returning();
+    
+    const endTime = Date.now();
+    console.log(`[BULK CREATE] Created ${createdContainers.length} containers in ${endTime - startTime}ms`);
+    
+    return createdContainers;
+  }
+
   async updateContainer(id: string, updates: Partial<InsertContainer>): Promise<Container> {
     const [updatedContainer] = await db
       .update(containers)
