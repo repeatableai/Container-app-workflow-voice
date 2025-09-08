@@ -55,7 +55,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           throw new Error('No URLs found in CSV file');
         }
         
-        // Analyze each URL with progress tracking
+        // Analyze each URL with progress tracking using server-side analysis
         setImportProgress({ current: 0, total: urls.length, currentUrl: '' });
         containersData = [];
         
@@ -64,36 +64,40 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           setImportProgress({ current: index + 1, total: urls.length, currentUrl: url });
           
           try {
-            // Validate URL
-            new URL(url);
+            // Use server-side URL analysis to bypass CORS restrictions
+            const analysis = await apiRequest('POST', '/api/analyze-url', { url });
             
-            // Fetch and analyze the webpage
-            const response = await fetch(url, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-              }
+            containersData.push({
+              title: analysis.title,
+              description: analysis.description,
+              type: activeTab,
+              industry: analysis.appType || '',
+              department: '',
+              visibility: 'public',
+              tags: ['imported', 'csv', analysis.appType?.toLowerCase(), ...analysis.features].filter(Boolean),
+              url: url,
+              isMarketplace: true
             });
-            
-            if (response.ok) {
-              const html = await response.text();
-              const analysis = analyzeAppContent(html, url);
-              
+          } catch (error) {
+            console.warn('Failed to analyze URL:', url, error);
+            // Fallback for any analysis errors
+            try {
+              const hostname = new URL(url).hostname.replace('www.', '');
               containersData.push({
-                title: analysis.title,
-                description: analysis.description,
+                title: `App from ${hostname}`,
+                description: `Application imported from ${url}`,
                 type: activeTab,
-                industry: analysis.appType || '',
+                industry: 'Web Application',
                 department: '',
                 visibility: 'public',
-                tags: ['imported', 'csv', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
+                tags: ['imported', 'csv'],
                 url: url,
                 isMarketplace: true
               });
-            } else {
-              // Fallback for failed requests
+            } catch {
               containersData.push({
-                title: `App from ${new URL(url).hostname}`,
-                description: `Application imported from ${url}`,
+                title: `App ${index + 1}`,
+                description: `Application from ${url}`,
                 type: activeTab,
                 industry: '',
                 department: '',
@@ -103,20 +107,6 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 isMarketplace: true
               });
             }
-          } catch (error) {
-            console.warn('Failed to analyze URL:', url, error);
-            // Fallback for invalid URLs or fetch errors
-            containersData.push({
-              title: `App ${index + 1}`,
-              description: `Application from ${url}`,
-              type: activeTab,
-              industry: '',
-              department: '',
-              visibility: 'public',
-              tags: ['imported', 'csv'],
-              url: url,
-              isMarketplace: true
-            });
           }
         }
       }
