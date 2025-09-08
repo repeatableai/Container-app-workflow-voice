@@ -47,7 +47,26 @@ export default function Library() {
 
   // Fetch containers for library browsing (marketplace only)
   const { data: containers = [], isLoading: containersLoading } = useQuery<Container[]>({
-    queryKey: ['/api/containers/marketplace', activeTab, searchQuery, filters],
+    queryKey: [`marketplace-containers-${activeTab}-${searchQuery}-${JSON.stringify(filters)}`],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (activeTab) params.append('type', activeTab);
+      if (searchQuery) params.append('search', searchQuery);
+      if (filters.industries.length > 0) params.append('industry', filters.industries[0]);
+      if (filters.departments.length > 0) params.append('department', filters.departments[0]);
+      
+      const url = `/api/containers/marketplace?${params.toString()}`;
+      console.log('Fetching marketplace containers from:', url);
+      const response = await fetch(url, { credentials: 'include' });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Marketplace containers received:', data.length);
+      return data;
+    },
     enabled: isAuthenticated,
     retry: false,
   });
