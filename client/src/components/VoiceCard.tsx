@@ -78,42 +78,9 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
     });
   };
 
-  const generateDisplayTitle = (container: Container) => {
-    // Use fullInstructions if available, otherwise fallback to description
-    const instructions = (container as any).fullInstructions || container.description || '';
-    const agentType = (container as any).aiVoiceAgentType || '';
-    const specialization = (container as any).specialization || '';
-    const useCase = (container as any).useCase || '';
-    
-    // If we have detailed information, create a descriptive title
-    if (agentType || specialization || useCase) {
-      let title = '';
-      
-      // Start with industry if available
-      if (container.industry && container.industry !== 'AI Voice') {
-        title += container.industry + ' - ';
-      }
-      
-      // Add the agent type or use case
-      if (agentType) {
-        title += agentType;
-      } else if (useCase) {
-        title += useCase;
-      } else if (specialization) {
-        title += specialization;
-      } else {
-        title += container.title;
-      }
-      
-      return title;
-    }
-    
-    // Fallback: try to extract industry and role from existing title
-    if (container.industry && container.industry !== 'AI Voice' && !container.title.toLowerCase().includes(container.industry.toLowerCase())) {
-      return `${container.industry} - ${container.title}`;
-    }
-    
-    return container.title;
+  // No more title generation - just use the exact title from the database
+  const getDisplayTitle = (container: Container) => {
+    return container.title; // Show exactly what's in the database
   };
 
   const getFullInstructions = () => {
