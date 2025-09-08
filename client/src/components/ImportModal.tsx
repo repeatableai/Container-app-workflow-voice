@@ -57,6 +57,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             department: containerData.department || '',
             visibility: containerData.visibility || 'public',
             tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+            isMarketplace: true,
             ...containerData
           };
           
@@ -159,6 +160,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               visibility: containerData.visibility || 'public',
               tags: Array.isArray(containerData.tags) ? containerData.tags : [],
               url: url,
+              isMarketplace: true,
               ...containerData
             };
             
@@ -186,7 +188,8 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           department: '',
           visibility: 'public' as const,
           tags: ['imported', 'url'],
-          url: url
+          url: url,
+          isMarketplace: true
         };
         
         await apiRequest('POST', '/api/containers', containerToCreate);
@@ -228,6 +231,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             department: containerData.department || '',
             visibility: containerData.visibility || 'public',
             tags: Array.isArray(containerData.tags) ? containerData.tags : [],
+            isMarketplace: true,
             ...containerData
           };
           

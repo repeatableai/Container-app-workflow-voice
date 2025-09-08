@@ -66,6 +66,7 @@ export const containers = pgTable("containers", {
   visibility: visibilityEnum("visibility").default("public").notNull(),
   tags: text("tags").array(),
   url: text("url"), // URL for iframe display and source reference
+  isMarketplace: boolean("is_marketplace").default(false).notNull(), // Distinguishes marketplace vs user containers
   views: integer("views").default(0),
   createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
