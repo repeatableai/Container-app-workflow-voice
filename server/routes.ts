@@ -250,6 +250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const permissions = await storage.getUserPermissions(userId);
       
+      console.log(`[MARKETPLACE] Request from user ${userId}, query:`, req.query);
+      
       if (!user || !permissions) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -279,6 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       });
 
+      console.log(`[MARKETPLACE] Found ${containers.length} containers for user ${userId}`);
       res.json(containers);
     } catch (error) {
       console.error("Error fetching marketplace containers:", error);

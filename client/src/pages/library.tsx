@@ -47,7 +47,7 @@ export default function Library() {
 
   // Fetch containers for library browsing (marketplace only)
   const { data: containers = [], isLoading: containersLoading } = useQuery<Container[]>({
-    queryKey: [`marketplace-containers-${activeTab}-${searchQuery}-${JSON.stringify(filters)}`],
+    queryKey: ['marketplace-containers', activeTab, searchQuery, filters],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (activeTab) params.append('type', activeTab);
