@@ -28,10 +28,66 @@ function analyzeAppContent(html: string, url: string) {
   // Clean up title - remove common unwanted suffixes and prefixes
   if (title) {
     title = title
-      .replace(/\s*[-|–]\s*(Home|Welcome|Index|Main)?\s*$/i, '')
-      .replace(/^(Home|Welcome|Index|Main)\s*[-|–]\s*/i, '')
+      .replace(/\s*[-|–]\s*(Home|Welcome|Index|Main|App|Application|Dashboard|Portal)?\s*$/i, '')
+      .replace(/^(Home|Welcome|Index|Main|App|Application|Dashboard|Portal)\s*[-|–]\s*/i, '')
+      .replace(/^\s*-\s*/, '') // Remove leading dash
+      .replace(/\s*-\s*$/, '') // Remove trailing dash
       .replace(/\s+/g, ' ')
       .trim();
+  }
+  
+  // If title is still generic or too short, try to extract from URL or page headers
+  if (!title || title.length < 3 || title.toLowerCase().includes('untitled')) {
+    // Try to extract from main headings with more context
+    const h1Matches = html.match(/<h1[^>]*>([^<]+?)<\/h1>/gi);
+    const h2Matches = html.match(/<h2[^>]*>([^<]+?)<\/h2>/gi);
+    
+    if (h1Matches && h1Matches.length > 0) {
+      // Get the first meaningful h1
+      for (const match of h1Matches) {
+        const headerText = match.replace(/<[^>]*>/g, '').trim();
+        if (headerText.length > 3 && !headerText.toLowerCase().includes('welcome')) {
+          title = headerText;
+          break;
+        }
+      }
+    }
+    
+    // If still no good title, try h2
+    if ((!title || title.length < 3) && h2Matches && h2Matches.length > 0) {
+      for (const match of h2Matches) {
+        const headerText = match.replace(/<[^>]*>/g, '').trim();
+        if (headerText.length > 3 && !headerText.toLowerCase().includes('welcome')) {
+          title = headerText;
+          break;
+        }
+      }
+    }
+    
+    // Last resort: extract from URL
+    if (!title || title.length < 3) {
+      try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        const hostname = urlObj.hostname.replace('www.', '');
+        
+        // Try to get app name from subdomain or path
+        if (hostname.includes('.')) {
+          const subdomain = hostname.split('.')[0];
+          if (subdomain !== 'www' && subdomain !== 'app' && subdomain !== 'chat') {
+            title = subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
+          }
+        }
+        
+        // If still no title, use hostname
+        if (!title || title.length < 3) {
+          title = hostname.split('.')[0].charAt(0).toUpperCase() + hostname.split('.')[0].slice(1);
+        }
+      } catch {
+        // Fallback to generic
+        title = 'Web Application';
+      }
+    }
   }
   
   // 2. Extract description from meta tags and page content
@@ -312,27 +368,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk re-analyze existing containers (no auth required for admin tasks)
-  app.post('/api/bulk-reanalyze', async (req: any, res) => {
+  // Bulk re-analyze existing containers (admin only)
+  app.post('/api/bulk-reanalyze', isAuthenticated, async (req: any, res) => {
     try {
-      // Skip auth check for bulk operations to allow system maintenance
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
       
-      // Get all marketplace containers with generic titles
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can perform bulk re-analysis" });
+      }
+      
+      // Get all marketplace containers with generic titles or broken URLs
       const containers = await storage.getContainers({
         isMarketplace: true
       });
 
-      const genericContainers = containers.filter(c => 
-        (c.title.startsWith('App from ') || c.title.includes('.com')) && 
+      const problemContainers = containers.filter(c => 
+        (c.title.startsWith('App from ') || 
+         c.title.includes('.com') || 
+         c.title.startsWith('App ') ||
+         c.title === 'Untitled' ||
+         (c.url && c.urlStatus === 'auth_required')) &&
         c.url && c.url !== '' && c.url !== '-' && c.url.startsWith('http')
       );
 
-      console.log(`Found ${genericContainers.length} containers to re-analyze`);
+      console.log(`Found ${problemContainers.length} containers to re-analyze`);
       
       let updated = 0;
       let failed = 0;
+      let authRequired = 0;
       
-      for (const container of genericContainers.slice(0, 20)) { // Process first 20 to avoid timeout
+      for (const container of problemContainers.slice(0, 50)) { // Process more containers
         try {
           if (!container.url) {
             failed++;
@@ -345,44 +411,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             },
-            signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined // 8 second timeout per URL
+            signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined
           });
 
           if (response.ok) {
             const html = await response.text();
             const analysis = analyzeAppContent(html, container.url!);
             
-            // Only update if we got a meaningful title (not a fallback)
+            // Update URL status to active and improve title if possible
+            const updateData: any = {
+              urlStatus: 'active',
+              urlLastChecked: new Date(),
+              urlCheckError: null
+            };
+
             if (analysis.title && !analysis.title.includes('App from') && analysis.title.length > 3) {
-              await storage.updateContainer(container.id, {
-                title: analysis.title,
-                description: analysis.description
-              });
-              updated++;
-              console.log(`✓ Updated: ${container.url} -> ${analysis.title}`);
-            } else {
-              failed++;
-              console.log(`✗ No improvement: ${container.url}`);
+              updateData.title = analysis.title;
+              updateData.description = analysis.description || container.description;
             }
+            
+            await storage.updateContainer(container.id, updateData);
+            updated++;
+            console.log(`✓ Updated: ${container.url} -> ${analysis.title || 'Status updated'}`);
+          } else if (response.status === 401 || response.status === 403) {
+            // Mark as auth required
+            await storage.updateContainer(container.id, {
+              urlStatus: 'auth_required',
+              urlLastChecked: new Date(),
+              urlCheckError: `HTTP ${response.status}: Authentication required`
+            });
+            authRequired++;
+            console.log(`🔒 Auth required: ${container.url}`);
           } else {
+            // Mark as broken
+            await storage.updateContainer(container.id, {
+              urlStatus: 'broken',
+              urlLastChecked: new Date(),
+              urlCheckError: `HTTP ${response.status}`
+            });
             failed++;
             console.log(`✗ HTTP ${response.status}: ${container.url}`);
           }
         } catch (error) {
           failed++;
           const errorMsg = error instanceof Error ? error.message : String(error);
+          await storage.updateContainer(container.id, {
+            urlStatus: 'broken',
+            urlLastChecked: new Date(),
+            urlCheckError: errorMsg
+          });
           console.log(`✗ Error: ${container.url} - ${errorMsg}`);
         }
         
         // Small delay to avoid overwhelming servers
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 150));
       }
       
       res.json({ 
-        message: `Bulk re-analysis complete: ${updated} updated, ${failed} failed`,
+        message: `Bulk re-analysis complete: ${updated} updated, ${authRequired} auth required, ${failed} failed`,
         updated, 
+        authRequired,
         failed,
-        total: genericContainers.length 
+        total: problemContainers.length 
       });
     } catch (error) {
       console.error("Error in bulk re-analysis:", error);

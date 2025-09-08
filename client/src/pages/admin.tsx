@@ -13,7 +13,7 @@ import CreateContainerModal from "@/components/CreateContainerModal";
 import ImportModal from "@/components/ImportModal";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Download, Upload } from "lucide-react";
+import { Plus, Download, Upload, RefreshCw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Container, ContainerStats } from "@shared/schema";
 
@@ -35,6 +35,7 @@ export default function Admin() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showMassImportModal, setShowMassImportModal] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -53,7 +54,23 @@ export default function Admin() {
 
   // Fetch containers
   const { data: containers = [], isLoading: containersLoading } = useQuery<Container[]>({
-    queryKey: ['/api/containers', activeTab, searchQuery, filters],
+    queryKey: ['admin-containers', activeTab, searchQuery, filters.industries[0], filters.departments[0]],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (activeTab) params.append('type', activeTab);
+      if (searchQuery) params.append('search', searchQuery);
+      if (filters.industries.length > 0) params.append('industry', filters.industries[0]);
+      if (filters.departments.length > 0) params.append('department', filters.departments[0]);
+      
+      const url = `/api/containers?${params.toString()}`;
+      const response = await fetch(url, { credentials: 'include' });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    },
     enabled: isAuthenticated,
     retry: false,
   });
@@ -100,6 +117,50 @@ export default function Admin() {
         description: "Failed to delete container",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleBulkReanalyze = async () => {
+    setIsReanalyzing(true);
+    try {
+      const response = await fetch('/api/bulk-reanalyze', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      // Refresh containers after reanalysis
+      queryClient.invalidateQueries({ queryKey: ['admin-containers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      
+      toast({
+        title: "Bulk Reanalysis Complete",
+        description: result.message,
+      });
+    } catch (error: any) {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to perform bulk reanalysis",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReanalyzing(false);
     }
   };
 
@@ -236,6 +297,19 @@ export default function Admin() {
                     <Upload className="w-4 h-4 mr-2" />
                     Mass Import
                   </Button>
+                  
+                  {activeTab === 'app' && (
+                    <Button 
+                      variant="outline"
+                      onClick={handleBulkReanalyze}
+                      disabled={isReanalyzing}
+                      className="border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950"
+                      data-testid="button-fix-app-titles"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                      {isReanalyzing ? 'Fixing...' : 'Fix App Titles'}
+                    </Button>
+                  )}
                   
                   <Button 
                     onClick={() => setShowCreateModal(true)}

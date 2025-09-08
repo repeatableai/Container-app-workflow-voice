@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Pause, Volume2, Download, Heart, Clock, BarChart3, Mic, ExternalLink, Monitor, Edit } from "lucide-react";
+import { Play, Pause, Volume2, Download, Heart, Clock, BarChart3, Mic, ExternalLink, Monitor, Edit, Copy, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
   const [isLiked, setIsLiked] = useState(false);
   const [showIframe, setShowIframe] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [editForm, setEditForm] = useState({
     title: container.title,
     description: container.description || '',
@@ -76,12 +77,19 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
     });
   };
 
-  // Generate mock voice characteristics
-  const voiceCharacteristics = {
-    language: ['English', 'Spanish', 'French', 'German'][Math.floor(Math.random() * 4)],
-    gender: ['Male', 'Female', 'Neutral'][Math.floor(Math.random() * 3)],
-    age: ['Young', 'Adult', 'Mature'][Math.floor(Math.random() * 3)],
-    accent: ['American', 'British', 'Australian', 'Neutral'][Math.floor(Math.random() * 4)],
+  const handleCopyInstructions = async () => {
+    if (container.description) {
+      try {
+        await navigator.clipboard.writeText(container.description);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        // Fallback for browsers that don't support clipboard API
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
   };
 
   return (
@@ -117,68 +125,39 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
           </div>
         </div>
 
-        {/* Voice Preview Controls */}
+        {/* Voice Instructions - Main Focus */}
         <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-4 border border-purple-200 dark:border-purple-800">
-          <div className="flex items-center gap-3 mb-3">
-            <Button
-              size="sm"
-              variant={isPlaying ? "default" : "outline"}
-              onClick={handlePlayPause}
-              className={isPlaying ? "bg-purple-600 hover:bg-purple-700" : "border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950"}
-              data-testid="play-pause-button"
-            >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </Button>
-            <div className="flex-1">
-              <div className="flex items-center gap-1 mb-1">
-                <BarChart3 className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium">Voice Preview</span>
-              </div>
-              <div className="w-full bg-purple-100 dark:bg-purple-900 rounded-full h-2">
-                <div 
-                  className={`bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300 ${
-                    isPlaying ? 'animate-pulse' : ''
-                  }`}
-                  style={{ width: isPlaying ? '100%' : '0%' }}
-                />
-              </div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-purple-600" />
+              <span className="text-sm font-medium">Voice Instructions</span>
             </div>
             <Button
               size="sm"
-              variant="ghost"
-              onClick={() => setIsLiked(!isLiked)}
-              className={isLiked ? "text-red-500" : "text-gray-400"}
-              data-testid="like-button"
+              variant="outline"
+              onClick={handleCopyInstructions}
+              className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
+              data-testid="copy-instructions-button"
             >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+              {copied ? (
+                <>
+                  <Check className="w-3 h-3 mr-1" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy for 11Labs
+                </>
+              )}
             </Button>
           </div>
-        </div>
-
-        {/* Voice Characteristics */}
-        <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-          <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded">
-            <div className="font-medium text-purple-700 dark:text-purple-300">Language</div>
-            <div className="text-muted-foreground">{voiceCharacteristics.language}</div>
-          </div>
-          <div className="bg-pink-50 dark:bg-pink-900/30 p-2 rounded">
-            <div className="font-medium text-pink-700 dark:text-pink-300">Gender</div>
-            <div className="text-muted-foreground">{voiceCharacteristics.gender}</div>
-          </div>
-          <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded">
-            <div className="font-medium text-purple-700 dark:text-purple-300">Age</div>
-            <div className="text-muted-foreground">{voiceCharacteristics.age}</div>
-          </div>
-          <div className="bg-pink-50 dark:bg-pink-900/30 p-2 rounded">
-            <div className="font-medium text-pink-700 dark:text-pink-300">Accent</div>
-            <div className="text-muted-foreground">{voiceCharacteristics.accent}</div>
+          <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded border border-purple-200 dark:border-purple-700 max-h-32 overflow-y-auto">
+            <p className="text-sm text-foreground whitespace-pre-wrap" data-testid="voice-instructions">
+              {container.description || "No voice instructions provided"}
+            </p>
           </div>
         </div>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4" data-testid="container-description">
-          {container.description || "Professional AI voice for narration, podcasts, and media production"}
-        </p>
 
         {/* Tags */}
         {container.tags && container.tags.length > 0 && (
@@ -237,7 +216,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
           </Button>
         </div>
 
-        {/* Industry/Department Info */}
+        {/* Stats and Info */}
         <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-purple-100 dark:border-purple-900">
           <div className="flex items-center gap-3">
             {container.industry && (
@@ -252,11 +231,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
             )}
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Heart className="w-3 h-3" />
-              <span>{Math.floor(Math.random() * 100) + 20} likes</span>
-            </div>
-            <span>{container.views || 0} plays</span>
+            <span>{container.views || 0} uses</span>
           </div>
         </div>
       </CardContent>
