@@ -59,7 +59,8 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           // Column 4: ElevenLabs_Complete_Prompt
           // Column 5+: metadata
           
-          const voiceAgents = lines.slice(1)
+          // LIMIT to first 1000 rows to get Healthcare data from beginning of CSV
+          const voiceAgents = lines.slice(1, 1001)
             .map((line, index) => {
               // Handle CSV parsing with quoted fields that may contain commas
               const columns = [];
