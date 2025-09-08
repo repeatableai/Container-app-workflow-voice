@@ -154,9 +154,25 @@ function analyzeAppContent(html: string, url: string) {
     }
   }
   
+  // Final validation - ensure we return meaningful data
+  if (!title) {
+    const hostname = new URL(url).hostname.replace('www.', '');
+    const domainParts = hostname.split('.');
+    const baseDomain = domainParts[0];
+    title = baseDomain.charAt(0).toUpperCase() + baseDomain.slice(1) + ' App';
+  }
+
+  if (!description || description.length < 20) {
+    if (title && !title.includes('App from')) {
+      description = `${title} - A ${appType.toLowerCase()} application providing ${features.slice(0, 2).join(' and ')} functionality.`;
+    } else {
+      description = `${appType} application from ${new URL(url).hostname.replace('www.', '')} with ${features.slice(0, 2).join(' and ')} capabilities.`;
+    }
+  }
+
   return {
     title: title.trim(),
-    description,
+    description: description.trim(),
     appType,
     features
   };
