@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Download } from "lucide-react";
+import { Upload, FileText, Download, Globe } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { apiRequest } from "@/lib/queryClient";
 
 interface ImportModalProps {
@@ -525,6 +526,27 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 }}
                 data-testid="file-input"
               />
+              
+              {/* Progress indicator for CSV URL analysis */}
+              {isImporting && importProgress.total > 0 && (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium">
+                      Analyzing URLs ({importProgress.current}/{importProgress.total})
+                    </span>
+                  </div>
+                  <Progress value={(importProgress.current / importProgress.total) * 100} className="w-full" />
+                  {importProgress.currentUrl && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      Current: {importProgress.currentUrl}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Extracting titles, descriptions, and app features from each URL...
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
