@@ -43,6 +43,19 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       if (file.name.endsWith('.json')) {
         const jsonData = JSON.parse(fileContent);
         containersData = Array.isArray(jsonData) ? jsonData : (jsonData.containers || [jsonData]);
+      } else if (file.name.endsWith('.jsonl')) {
+        // JSONL format: one JSON object per line
+        const lines = fileContent.split('\n').filter(line => line.trim());
+        containersData = lines.map(line => {
+          try {
+            return JSON.parse(line.trim());
+          } catch (error) {
+            console.error('Failed to parse JSONL line:', line, error);
+            return null;
+          }
+        }).filter(Boolean);
+        
+        console.log(`Successfully parsed ${containersData.length} objects from JSONL file`);
       } else if (file.name.endsWith('.csv')) {
         // Enhanced CSV parsing with URL analysis for apps/workflows, instructions for voices
         
@@ -732,7 +745,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                     } else {
                       toast({
                         title: "Invalid file type",
-                        description: "Please upload a JSON, CSV, or ZIP file.",
+                        description: "Please upload a JSON, JSONL, CSV, or ZIP file.",
                         variant: "destructive",
                       });
                     }
@@ -746,7 +759,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                     Click to upload or drag and drop
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    JSON, CSV, or ZIP files
+                    JSON, JSONL, CSV, or ZIP files
                   </p>
                 </div>
               </div>
@@ -754,7 +767,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 id="file-input"
                 type="file"
                 className="hidden"
-                accept=".json,.csv,.zip"
+                accept=".json,.jsonl,.csv,.zip"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
