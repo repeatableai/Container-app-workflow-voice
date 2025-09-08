@@ -11,104 +11,147 @@ function analyzeAppContent(html: string, url: string) {
   let appType = '';
   let features: string[] = [];
   
-  // 1. Extract title from various sources
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  // 1. Extract title from various sources with better regex patterns
+  const titleMatch = html.match(/<title[^>]*>\s*([^<]+?)\s*<\/title>/is);
   const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
   const twitterTitleMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
   
-  title = titleMatch?.[1] || ogTitleMatch?.[1] || twitterTitleMatch?.[1] || '';
+  // Try multiple title extraction methods
+  title = titleMatch?.[1]?.trim() || ogTitleMatch?.[1]?.trim() || twitterTitleMatch?.[1]?.trim() || '';
   
-  // 2. Analyze page structure for app type
+  // If no title found, try extracting from h1 tags
+  if (!title) {
+    const h1Match = html.match(/<h1[^>]*>\s*([^<]+?)\s*<\/h1>/is);
+    title = h1Match?.[1]?.trim() || '';
+  }
+  
+  // Clean up title - remove common unwanted suffixes and prefixes
+  if (title) {
+    title = title
+      .replace(/\s*[-|–]\s*(Home|Welcome|Index|Main)?\s*$/i, '')
+      .replace(/^(Home|Welcome|Index|Main)\s*[-|–]\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  
+  // 2. Extract description from meta tags and page content
+  let description = '';
+  const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i);
+  const ogDescMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i);
+  
+  description = metaDescMatch?.[1]?.trim() || ogDescMatch?.[1]?.trim() || '';
+  
+  // If no meta description, try to extract from first paragraph or div with substantial text
+  if (!description) {
+    const pMatch = html.match(/<p[^>]*>\s*([^<]{50,200}?)\s*<\/p>/is);
+    if (pMatch?.[1]) {
+      description = pMatch[1].trim().replace(/\s+/g, ' ');
+    }
+  }
+  
+  // 3. Analyze page structure for app type
   const hasCanvas = /<canvas[^>]*>/i.test(html);
   const hasVideo = /<video[^>]*>/i.test(html);
   const hasForm = /<form[^>]*>/i.test(html);
   
-  // Look for specific button patterns
-  const buttonPatterns = {
-    drawing: /draw|paint|brush|canvas|sketch/i,
-    media: /play|pause|volume|video|audio|media/i,
-    chat: /chat|send|message|talk/i,
-    task: /task|todo|complete|check/i,
-    calendar: /calendar|schedule|event|date/i,
-    calculator: /calculate|equals|number|math/i,
-    game: /game|play|score|level|start/i,
-    editor: /edit|save|format|bold|italic/i
+  // Look for specific content patterns in the entire HTML
+  const contentPatterns = {
+    drawing: /draw|paint|brush|canvas|sketch|art|design|illustration|graphic/i,
+    media: /play|pause|volume|video|audio|media|music|sound|stream/i,
+    chat: /chat|send|message|talk|conversation|discuss|communicate/i,
+    task: /task|todo|complete|check|project|manage|organize|productivity/i,
+    calendar: /calendar|schedule|event|date|appointment|meeting|plan/i,
+    calculator: /calculate|equals|number|math|compute|formula|equation/i,
+    game: /game|play|score|level|start|winner|puzzle|challenge|arcade/i,
+    editor: /edit|save|format|bold|italic|text|document|write|compose/i,
+    dashboard: /dashboard|analytics|metrics|stats|data|chart|graph/i,
+    tool: /tool|utility|helper|converter|generator|builder/i
   };
   
-  // Detect app type based on elements and content
-  if (hasCanvas || buttonPatterns.drawing.test(html)) {
+  // 4. Detect app type based on elements and content
+  if (hasCanvas || contentPatterns.drawing.test(html)) {
     appType = 'Drawing/Graphics';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Creative Drawing Canvas';
+    features.push('canvas drawing', 'graphics tools', 'creative');
+    if (!description) {
+      description = 'Interactive drawing and graphics application with canvas-based tools for creating digital artwork and illustrations.';
     }
-    features.push('canvas drawing', 'graphics tools');
-  } else if (hasVideo || buttonPatterns.media.test(html)) {
+  } else if (hasVideo || contentPatterns.media.test(html)) {
     appType = 'Media Player';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Media Player Application';
+    features.push('video playback', 'media controls', 'streaming');
+    if (!description) {
+      description = 'Media playback application supporting video and audio content with standard media controls and streaming capabilities.';
     }
-    features.push('video playback', 'media controls');
-  } else if (buttonPatterns.chat.test(html)) {
+  } else if (contentPatterns.chat.test(html)) {
     appType = 'Communication';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Chat Application';
+    features.push('messaging', 'real-time communication', 'chat');
+    if (!description) {
+      description = 'Real-time communication platform enabling messaging and chat functionality between users.';
     }
-    features.push('messaging', 'real-time communication');
-  } else if (buttonPatterns.task.test(html)) {
+  } else if (contentPatterns.dashboard.test(html)) {
+    appType = 'Analytics';
+    features.push('dashboard', 'analytics', 'metrics', 'data visualization');
+    if (!description) {
+      description = 'Analytics dashboard application providing data visualization, metrics tracking, and business intelligence tools.';
+    }
+  } else if (contentPatterns.task.test(html)) {
     appType = 'Productivity';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Task Management Tool';
+    features.push('task tracking', 'productivity management', 'organization');
+    if (!description) {
+      description = 'Productivity application designed to help users manage tasks, projects, and organize their workflow efficiently.';
     }
-    features.push('task tracking', 'productivity management');
-  } else if (buttonPatterns.calendar.test(html)) {
+  } else if (contentPatterns.calendar.test(html)) {
     appType = 'Productivity';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Calendar Application';
+    features.push('scheduling', 'calendar management', 'events');
+    if (!description) {
+      description = 'Calendar and scheduling application for managing events, appointments, and time planning.';
     }
-    features.push('scheduling', 'calendar management');
-  } else if (buttonPatterns.calculator.test(html)) {
+  } else if (contentPatterns.calculator.test(html)) {
     appType = 'Utility';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Calculator Tool';
+    features.push('calculations', 'math operations', 'tools');
+    if (!description) {
+      description = 'Calculator utility application providing mathematical calculations and computational tools.';
     }
-    features.push('calculations', 'math operations');
-  } else if (buttonPatterns.game.test(html)) {
+  } else if (contentPatterns.game.test(html)) {
     appType = 'Entertainment';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Game Application';
+    features.push('gaming', 'entertainment', 'interactive');
+    if (!description) {
+      description = 'Interactive entertainment application featuring games and engaging user experiences.';
     }
-    features.push('gaming', 'entertainment');
-  } else if (buttonPatterns.editor.test(html) || hasForm) {
+  } else if (contentPatterns.editor.test(html) || hasForm) {
     appType = 'Productivity';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      title = 'Editor Application';
+    features.push('text editing', 'content creation', 'writing');
+    if (!description) {
+      description = 'Text editing and content creation application with formatting tools and document management features.';
     }
-    features.push('text editing', 'content creation');
+  } else if (contentPatterns.tool.test(html)) {
+    appType = 'Utility';
+    features.push('utility', 'tools', 'helper');
+    if (!description) {
+      description = 'Utility application providing specialized tools and helpful functions for various tasks.';
+    }
   } else {
     appType = 'Web Application';
-    if (!title || title.includes('localhost') || title.includes('index')) {
-      const hostname = new URL(url).hostname.replace('www.', '');
-      title = `${hostname.charAt(0).toUpperCase() + hostname.slice(1)} App`;
+    features.push('web app', 'interactive tool', 'online');
+    if (!description) {
+      description = `Web-based application from ${new URL(url).hostname.replace('www.', '')} providing interactive functionality and user tools.`;
     }
-    features.push('web app', 'interactive tool');
   }
   
-  // Generate description
-  let description = '';
-  if (appType === 'Drawing/Graphics') {
-    description = 'Interactive drawing and graphics application with canvas-based tools for creating digital artwork and sketches.';
-  } else if (appType === 'Media Player') {
-    description = 'Media playback application supporting video and audio content with standard media controls.';
-  } else if (appType === 'Communication') {
-    description = 'Real-time communication platform enabling messaging and chat functionality between users.';
-  } else if (appType === 'Productivity') {
-    description = 'Productivity application designed to help users manage tasks, schedules, or content efficiently.';
-  } else if (appType === 'Utility') {
-    description = 'Utility application providing specialized tools and calculations for everyday use.';
-  } else if (appType === 'Entertainment') {
-    description = 'Interactive entertainment application featuring games and engaging user experiences.';
-  } else {
-    description = `Web-based application from ${new URL(url).hostname} providing interactive functionality and user tools.`;
+  // 5. Final fallback for title if still empty
+  if (!title) {
+    const hostname = new URL(url).hostname.replace('www.', '');
+    const domainParts = hostname.split('.');
+    const baseDomain = domainParts[0];
+    title = baseDomain.charAt(0).toUpperCase() + baseDomain.slice(1) + ' App';
+  }
+  
+  // 6. Ensure description exists and is meaningful
+  if (!description || description.length < 20) {
+    if (title && title !== 'App') {
+      description = `${title} - A ${appType.toLowerCase()} application providing ${features.slice(0, 2).join(' and ')} functionality.`;
+    } else {
+      description = `${appType} application from ${new URL(url).hostname.replace('www.', '')} with ${features.slice(0, 2).join(' and ')} capabilities.`;
+    }
   }
   
   return {
