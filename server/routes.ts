@@ -728,6 +728,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // URL Health Monitoring endpoints
+  app.post('/api/check-url-health', isAuthenticated, async (req: any, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
+      }
+
+      const healthCheck = await checkUrlHealth(url);
+      res.json(healthCheck);
+    } catch (error) {
+      console.error("Error checking URL health:", error);
+      res.status(500).json({ message: "Failed to check URL health" });
+    }
+  });
+
+  app.post('/api/batch-check-urls', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can perform batch URL checks" });
+      }
+
+      // Get all containers with URLs that need checking (haven't been checked in the last hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const containers = await storage.getContainersForHealthCheck(oneHourAgo);
+      
+      let checked = 0;
+      let updated = 0;
+      
+      for (const container of containers.slice(0, 20)) { // Limit to 20 URLs to avoid timeout
+        if (!container.url || container.url === '' || container.url === '-') {
+          continue;
+        }
+        
+        try {
+          console.log(`Checking URL health: ${container.url}`);
+          const healthCheck = await checkUrlHealth(container.url);
+          
+          await storage.updateContainer(container.id, {
+            urlStatus: healthCheck.status,
+            urlLastChecked: new Date(),
+            urlCheckError: healthCheck.error || null
+          });
+          
+          checked++;
+          if (healthCheck.status !== 'unknown') {
+            updated++;
+          }
+        } catch (error) {
+          console.error(`Error checking ${container.url}:`, error);
+          
+          await storage.updateContainer(container.id, {
+            urlStatus: 'broken',
+            urlLastChecked: new Date(),
+            urlCheckError: error instanceof Error ? error.message : 'Unknown error'
+          });
+          
+          checked++;
+        }
+        
+        // Small delay to avoid overwhelming servers
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      res.json({
+        message: `Batch URL health check complete: ${checked} checked, ${updated} updated`,
+        checked,
+        updated,
+        totalContainers: containers.length
+      });
+    } catch (error) {
+      console.error("Error in batch URL health check:", error);
+      res.status(500).json({ message: "Failed to perform batch URL health check" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// URL Health Checking function
+async function checkUrlHealth(url: string): Promise<{
+  status: 'unknown' | 'active' | 'broken' | 'auth_required' | 'timeout' | 'blocked';
+  responseTime?: number;
+  statusCode?: number;
+  error?: string;
+}> {
+  try {
+    const startTime = Date.now();
+    
+    const response = await fetch(url, {
+      method: 'HEAD', // Use HEAD to minimize data transfer
+      headers: {
+        'User-Agent': 'ContainerHub Health Monitor/1.0',
+      },
+      signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined // 10 second timeout
+    });
+    
+    const responseTime = Date.now() - startTime;
+    const statusCode = response.status;
+    
+    // Determine status based on response
+    if (statusCode >= 200 && statusCode < 300) {
+      return { status: 'active', responseTime, statusCode };
+    } else if (statusCode === 401 || statusCode === 403) {
+      return { status: 'auth_required', responseTime, statusCode };
+    } else if (statusCode >= 400 && statusCode < 600) {
+      return { 
+        status: 'broken', 
+        responseTime, 
+        statusCode, 
+        error: `HTTP ${statusCode}` 
+      };
+    } else {
+      return { 
+        status: 'unknown', 
+        responseTime, 
+        statusCode, 
+        error: `Unexpected status code: ${statusCode}` 
+      };
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === 'TimeoutError') {
+        return { status: 'timeout', error: 'Request timed out' };
+      } else if (error.message.includes('fetch')) {
+        return { status: 'blocked', error: 'Network blocked or unreachable' };
+      } else {
+        return { status: 'broken', error: error.message };
+      }
+    }
+    
+    return { status: 'broken', error: 'Unknown error occurred' };
+  }
 }

@@ -55,6 +55,9 @@ export const containerTypeEnum = pgEnum('container_type', ['app', 'voice', 'work
 // Visibility enum
 export const visibilityEnum = pgEnum('visibility', ['public', 'restricted', 'admin_only']);
 
+// URL status enum for health monitoring
+export const urlStatusEnum = pgEnum('url_status', ['unknown', 'active', 'broken', 'auth_required', 'timeout', 'blocked']);
+
 // Containers table
 export const containers = pgTable("containers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -66,6 +69,9 @@ export const containers = pgTable("containers", {
   visibility: visibilityEnum("visibility").default("public").notNull(),
   tags: text("tags").array(),
   url: text("url"), // URL for iframe display and source reference
+  urlStatus: urlStatusEnum("url_status").default("unknown"), // Health status of the URL
+  urlLastChecked: timestamp("url_last_checked"), // When URL health was last checked
+  urlCheckError: text("url_check_error"), // Error message from last URL check
   isMarketplace: boolean("is_marketplace").default(false).notNull(), // Distinguishes marketplace vs user containers
   views: integer("views").default(0),
   createdBy: varchar("created_by").references(() => users.id),

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Download, Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit } from "lucide-react";
 import type { Container } from "@shared/schema";
+import UrlStatusIcon from "./UrlStatusIcon";
 
 interface AppCardProps {
   container: Container;
@@ -115,9 +116,16 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
               </div>
             </div>
           </div>
-          <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-            App
-          </Badge>
+          <div className="flex flex-col gap-1 ml-2">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              App
+            </Badge>
+            <UrlStatusIcon 
+              status={container.urlStatus} 
+              lastChecked={container.urlLastChecked} 
+              error={container.urlCheckError} 
+            />
+          </div>
         </div>
 
         {/* Description */}

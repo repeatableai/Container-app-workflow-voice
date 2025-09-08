@@ -62,6 +62,9 @@ export interface IStorage {
   // Filter options
   getIndustries(): Promise<string[]>;
   getDepartments(): Promise<string[]>;
+  
+  // URL Health Monitoring
+  getContainersForHealthCheck(lastCheckedBefore: Date): Promise<Container[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -342,6 +345,21 @@ export class DatabaseStorage implements IStorage {
       voices,
       workflows,
     };
+  }
+
+  async getContainersForHealthCheck(lastCheckedBefore: Date): Promise<Container[]> {
+    // Get containers that have URLs and haven't been checked recently
+    const results = await db
+      .select()
+      .from(containers)
+      .where(
+        and(
+          sql`url IS NOT NULL AND url != '' AND url != '-'`,
+          sql`url_last_checked IS NULL OR url_last_checked < ${lastCheckedBefore}`
+        )
+      )
+      .orderBy(containers.updatedAt);
+    return results;
   }
 }
 

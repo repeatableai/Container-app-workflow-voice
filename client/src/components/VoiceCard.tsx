@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { Container } from "@shared/schema";
+import UrlStatusIcon from "./UrlStatusIcon";
 
 interface VoiceCardProps {
   container: Container;
@@ -104,9 +105,16 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
               </div>
             </div>
           </div>
-          <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-            Voice
-          </Badge>
+          <div className="flex flex-col gap-1 ml-2">
+            <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+              Voice
+            </Badge>
+            <UrlStatusIcon 
+              status={container.urlStatus} 
+              lastChecked={container.urlLastChecked} 
+              error={container.urlCheckError} 
+            />
+          </div>
         </div>
 
         {/* Voice Preview Controls */}

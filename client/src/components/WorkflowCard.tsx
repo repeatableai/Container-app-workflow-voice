@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { Container } from "@shared/schema";
+import UrlStatusIcon from "./UrlStatusIcon";
 
 interface WorkflowCardProps {
   container: Container;
@@ -112,9 +113,16 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
               </div>
             </div>
           </div>
-          <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-            Workflow
-          </Badge>
+          <div className="flex flex-col gap-1 ml-2">
+            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+              Workflow
+            </Badge>
+            <UrlStatusIcon 
+              status={container.urlStatus} 
+              lastChecked={container.urlLastChecked} 
+              error={container.urlCheckError} 
+            />
+          </div>
         </div>
 
         {/* Workflow Status */}
