@@ -16,6 +16,8 @@ interface AppCardProps {
 export default function AppCard({ container, onView, onDelete, canDelete }: AppCardProps) {
   const [isInstalling, setIsInstalling] = useState(false);
   const [showIframe, setShowIframe] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   const handleInstall = async () => {
     setIsInstalling(true);
@@ -29,6 +31,24 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
     onView(container.id);
     if (container.url) {
       setShowIframe(true);
+      setIframeError(false);
+      setIframeLoading(true);
+    }
+  };
+
+  const handleIframeLoad = () => {
+    setIframeLoading(false);
+  };
+
+  const handleIframeError = () => {
+    setIframeLoading(false);
+    setIframeError(true);
+  };
+
+  const openInNewTab = () => {
+    if (container.url) {
+      window.open(container.url, '_blank');
+      setShowIframe(false);
     }
   };
 
@@ -167,15 +187,46 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
               {container.title}
             </DialogTitle>
           </DialogHeader>
-          <div className="w-full h-[70vh] border rounded-lg overflow-hidden">
+          <div className="w-full h-[70vh] border rounded-lg overflow-hidden relative">
             {container.url ? (
-              <iframe
-                src={container.url}
-                className="w-full h-full border-0"
-                title={container.title}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                data-testid="container-iframe"
-              />
+              <>
+                {iframeLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+                    <div className="text-center">
+                      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading app...</p>
+                    </div>
+                  </div>
+                )}
+                {iframeError ? (
+                  <div className="flex items-center justify-center h-full bg-muted text-muted-foreground">
+                    <div className="text-center max-w-md">
+                      <Monitor className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="font-semibold mb-2">Can't display in preview</h3>
+                      <p className="text-sm mb-4">
+                        This app can't be embedded due to security restrictions or requires authentication.
+                      </p>
+                      <Button onClick={openInNewTab} className="mb-2">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open in New Tab
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Opens the app in a new browser tab where it should work normally.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <iframe
+                    src={container.url}
+                    className="w-full h-full border-0"
+                    title={container.title}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                    onLoad={handleIframeLoad}
+                    onError={handleIframeError}
+                    data-testid="container-iframe"
+                  />
+                )}
+              </>
             ) : (
               <div className="flex items-center justify-center h-full bg-muted text-muted-foreground">
                 <div className="text-center">
@@ -184,6 +235,15 @@ export default function AppCard({ container, onView, onDelete, canDelete }: AppC
                 </div>
               </div>
             )}
+          </div>
+          <div className="flex justify-between items-center mt-4">
+            <p className="text-xs text-muted-foreground">
+              Having issues? Try opening in a new tab for full functionality.
+            </p>
+            <Button variant="outline" size="sm" onClick={openInNewTab}>
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Open in New Tab
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
