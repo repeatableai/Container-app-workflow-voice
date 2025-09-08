@@ -100,8 +100,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content') || '';
     
     // 2. Analyze page structure for app type and better title
-    const headings = Array.from(doc.querySelectorAll('h1, h2, h3')).map(h => h.textContent?.trim()).filter(Boolean);
-    const buttons = Array.from(doc.querySelectorAll('button, .btn, [role="button"]')).map(b => b.textContent?.trim().toLowerCase()).filter(Boolean);
+    const headings = Array.from(doc.querySelectorAll('h1, h2, h3')).map(h => h.textContent?.trim()).filter(Boolean) as string[];
+    const buttons = Array.from(doc.querySelectorAll('button, .btn, [role="button"]'))
+      .map(b => b.textContent?.trim().toLowerCase())
+      .filter(Boolean) as string[];
     const inputs = Array.from(doc.querySelectorAll('input, textarea, select'));
     const canvases = doc.querySelectorAll('canvas');
     const videos = doc.querySelectorAll('video');
@@ -183,11 +185,11 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       description = `A ${appType.toLowerCase()} application${featureText}. `;
       
       if (buttons.length > 0) {
-        const keyActions = buttons.slice(0, 3).join(', ');
+        const keyActions = buttons.slice(0, 3).filter(Boolean).join(', ');
         description += `Features include: ${keyActions}. `;
       }
       
-      if (mainHeading && !description.includes(headings[0])) {
+      if (mainHeading && headings[0] && !description.includes(headings[0])) {
         description += mainHeading;
       }
       
