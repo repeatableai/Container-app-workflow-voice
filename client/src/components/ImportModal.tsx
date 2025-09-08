@@ -79,12 +79,31 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               }
               columns.push(current.trim()); // Add the last column
               
+              // DEBUG: Log first 5 rows to see exact data
+              if (index < 5) {
+                console.log(`=== ROW ${index + 1} DEBUG ===`);
+                console.log('Raw line:', line.substring(0, 200) + '...');
+                console.log('Parsed columns [0-4]:', columns.slice(0, 5));
+                console.log('Column count:', columns.length);
+              }
+              
               // Simple column access by position
               const industry = columns[0]?.replace(/"/g, '').trim() || 'General';
               const jobTitle = columns[1]?.replace(/"/g, '').trim() || 'Professional';
               const jobTask = columns[2]?.replace(/"/g, '').trim() || 'Task';
               const aiVoiceAgentType = columns[3]?.replace(/"/g, '').trim() || '';
               const elevenLabsPrompt = columns[4]?.replace(/"/g, '').trim();
+              
+              // DEBUG: Log the extracted values for first 5 rows
+              if (index < 5) {
+                console.log('Extracted values:');
+                console.log('- Industry:', industry);
+                console.log('- Job Title:', jobTitle);
+                console.log('- Job Task:', jobTask);
+                console.log('- Agent Type:', aiVoiceAgentType);
+                console.log('- Prompt length:', elevenLabsPrompt?.length || 0);
+                console.log('========================');
+              }
               
               // Metadata from remaining columns (5+)
               const productivityGains = columns[5]?.replace(/"/g, '').trim() || '';
