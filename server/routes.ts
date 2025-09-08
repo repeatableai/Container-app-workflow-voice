@@ -12,7 +12,7 @@ function analyzeAppContent(html: string, url: string) {
   let features: string[] = [];
   
   // 1. Extract title from various sources with better regex patterns
-  const titleMatch = html.match(/<title[^>]*>\s*([^<]+?)\s*<\/title>/is);
+  const titleMatch = html.match(/<title[^>]*>([^<]+?)<\/title>/i);
   const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
   const twitterTitleMatch = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
   
@@ -21,7 +21,7 @@ function analyzeAppContent(html: string, url: string) {
   
   // If no title found, try extracting from h1 tags
   if (!title) {
-    const h1Match = html.match(/<h1[^>]*>\s*([^<]+?)\s*<\/h1>/is);
+    const h1Match = html.match(/<h1[^>]*>([^<]+?)<\/h1>/i);
     title = h1Match?.[1]?.trim() || '';
   }
   
@@ -43,7 +43,7 @@ function analyzeAppContent(html: string, url: string) {
   
   // If no meta description, try to extract from first paragraph or div with substantial text
   if (!description) {
-    const pMatch = html.match(/<p[^>]*>\s*([^<]{50,200}?)\s*<\/p>/is);
+    const pMatch = html.match(/<p[^>]*>([^<]{50,200}?)<\/p>/i);
     if (pMatch?.[1]) {
       description = pMatch[1].trim().replace(/\s+/g, ' ');
     }
