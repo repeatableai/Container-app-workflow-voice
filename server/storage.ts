@@ -290,6 +290,8 @@ export class DatabaseStorage implements IStorage {
         department: containers.department,
         visibility: containers.visibility,
         tags: containers.tags,
+        url: containers.url,
+        isMarketplace: containers.isMarketplace,
         views: containers.views,
         createdBy: containers.createdBy,
         createdAt: containers.createdAt,
