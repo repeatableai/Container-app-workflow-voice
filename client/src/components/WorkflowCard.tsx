@@ -510,171 +510,503 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   const analyzeWorkflowComplexity = () => {
     const workflowData = parseWorkflowData();
     
-    // Analyze workflow text for complex patterns
+    // Get all text content for analysis
     const fullText = [
       workflowData.description,
       workflowData.visualFlow,
       workflowData.workflowJson,
       container.description,
       container.fullInstructions
-    ].filter(Boolean).join(' ').toLowerCase();
+    ].filter(Boolean).join(' ');
     
-    // Identify workflow patterns
-    const hasDecisionLogic = /\b(if|when|condition|branch|decide|choose|check if|validate|verify)\b/.test(fullText);
-    const hasErrorHandling = /\b(error|fail|exception|retry|fallback|catch|timeout|abort)\b/.test(fullText);
-    const hasManualSteps = /\b(manual|review|approve|human|inspect|verify manually|confirm)\b/.test(fullText);
-    const hasIntegrations = /\b(api|webhook|database|email|notification|external|integration|connect|sync)\b/.test(fullText);
-    const hasParallelProcessing = /\b(parallel|concurrent|simultaneously|async|split|fork|merge)\b/.test(fullText);
+    // Extract actual workflow steps from content
+    const extractedSteps = extractActualWorkflowSteps(fullText, container);
     
-    // Create complex workflow structure
-    let steps: WorkflowStep[] = [];
-    let paths: WorkflowPath[] = [];
+    if (extractedSteps.length > 0) {
+      return generateWorkflowFromSteps(extractedSteps, container);
+    }
     
-    // Start with trigger
-    steps.push({
-      id: 1,
-      name: 'Trigger',
-      description: detectTriggerType(fullText),
-      type: 'trigger',
-      x: 50,
-      y: 100
-    });
+    // Fallback: Create industry-specific workflow based on metadata
+    return generateIndustrySpecificWorkflow(container, fullText);
+  };
+  
+  const extractActualWorkflowSteps = (text: string, container: Container) => {
+    const steps: any[] = [];
     
-    let currentId = 2;
-    let currentX = 200;
-    let currentY = 100;
+    // Try to extract numbered steps
+    const numberedSteps = text.match(/\d+\s*[.)]\s*([^\n\r]{10,100})/g);
+    if (numberedSteps && numberedSteps.length >= 3) {
+      return numberedSteps.slice(0, 8).map((step, index) => ({
+        name: step.replace(/^\d+\s*[.)]\s*/, '').split(/[.!?]/)[0].trim(),
+        description: step.replace(/^\d+\s*[.)]\s*/, '').trim(),
+        order: index + 1
+      }));
+    }
     
-    // Add data collection/input step
-    steps.push({
-      id: currentId,
-      name: 'Collect Data',
-      description: 'Gather and process input data',
-      type: 'data',
-      x: currentX,
-      y: currentY
-    });
-    paths.push({ from: 1, to: currentId });
-    currentId++;
-    currentX += 150;
+    // Try to extract bullet points
+    const bulletSteps = text.match(/[•\-*]\s*([^\n\r]{15,100})/g);
+    if (bulletSteps && bulletSteps.length >= 3) {
+      return bulletSteps.slice(0, 8).map((step, index) => ({
+        name: step.replace(/^[•\-*]\s*/, '').split(/[.!?]/)[0].trim(),
+        description: step.replace(/^[•\-*]\s*/, '').trim(),
+        order: index + 1
+      }));
+    }
     
-    // Add validation/decision step if detected
-    if (hasDecisionLogic) {
-      steps.push({
-        id: currentId,
-        name: 'Validate Input',
-        description: 'Check data validity and business rules',
-        type: 'validation',
-        isDecision: true,
-        x: currentX,
-        y: currentY
-      });
-      paths.push({ from: currentId - 1, to: currentId });
+    // Try to extract action verbs and create steps
+    const actionPattern = /\b(start|begin|create|generate|send|receive|process|analyze|review|approve|validate|check|verify|update|save|delete|export|import|notify|alert|calculate|transform|convert|filter|sort|search|find|match|compare|merge|split|combine|execute|run|trigger|schedule|monitor|track|log|report|summarize|prepare|collect|gather|organize|format|parse|extract|backup|restore|sync|upload|download|copy|move|archive|publish|share|collaborate|assign|escalate|close|complete|finish)\b[^.!?\n]{10,80}/gi;
+    const actionMatches = text.match(actionPattern);
+    if (actionMatches && actionMatches.length >= 3) {
+      return actionMatches.slice(0, 6).map((action, index) => ({
+        name: action.split(' ').slice(0, 4).join(' ').trim(),
+        description: action.trim(),
+        order: index + 1
+      }));
+    }
+    
+    return [];
+  };
+  
+  const generateWorkflowFromSteps = (extractedSteps: any[], container: Container) => {
+    const steps: WorkflowStep[] = [];
+    const paths: WorkflowPath[] = [];
+    
+    // Use extracted steps to create unique workflow
+    extractedSteps.forEach((step, index) => {
+      const stepType = determineStepType(step.description, container.industry || undefined);
+      const { x, y } = calculateStepPosition(index, extractedSteps.length);
       
-      // Add success path
-      const successId = currentId + 1;
       steps.push({
-        id: successId,
-        name: 'Process Valid Data',
-        description: 'Handle approved data',
-        type: 'process',
-        x: currentX + 150,
-        y: currentY
+        id: index + 1,
+        name: step.name.length > 20 ? step.name.substring(0, 20) + '...' : step.name,
+        description: step.description.length > 40 ? step.description.substring(0, 40) + '...' : step.description,
+        type: stepType.type,
+        isDecision: stepType.isDecision,
+        isManual: stepType.isManual,
+        isIntegration: stepType.isIntegration,
+        errorHandling: stepType.errorHandling,
+        x,
+        y
       });
-      paths.push({ from: currentId, to: successId, condition: 'Valid' });
       
-      // Add error handling path if detected
-      if (hasErrorHandling) {
-        const errorId = currentId + 2;
-        steps.push({
-          id: errorId,
-          name: 'Handle Invalid Data',
-          description: 'Process validation failures',
-          type: 'error',
-          errorHandling: true,
-          x: currentX + 150,
-          y: currentY + 100
-        });
-        paths.push({ from: currentId, to: errorId, condition: 'Invalid', isError: true });
-        
-        // Add retry path
-        paths.push({ from: errorId, to: currentId, isRetry: true });
-        
-        currentId = errorId + 1;
-        currentX += 300;
-      } else {
-        currentId = successId + 1;
-        currentX += 300;
+      // Connect to previous step
+      if (index > 0) {
+        paths.push({ from: index, to: index + 1 });
       }
-    }
-    
-    // Add manual review step if detected
-    if (hasManualSteps) {
-      steps.push({
-        id: currentId,
-        name: 'Manual Review',
-        description: 'Human approval required',
-        type: 'review',
-        isManual: true,
-        x: currentX,
-        y: currentY
-      });
-      paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
-      currentId++;
-      currentX += 150;
-    }
-    
-    // Add integration steps if detected
-    if (hasIntegrations) {
-      const integrationSteps = detectIntegrationTypes(fullText);
-      integrationSteps.forEach((integration, index) => {
-        steps.push({
-          id: currentId,
-          name: integration.name,
-          description: integration.description,
-          type: integration.type,
-          isIntegration: true,
-          x: currentX,
-          y: hasParallelProcessing && index > 0 ? currentY + (index * 80) : currentY
-        });
-        paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
-        currentId++;
-        if (!hasParallelProcessing) currentX += 150;
-      });
-      
-      if (hasParallelProcessing && integrationSteps.length > 1) {
-        // Add merge point after parallel processing
-        steps.push({
-          id: currentId,
-          name: 'Merge Results',
-          description: 'Combine parallel outputs',
-          type: 'process',
-          x: currentX + 150,
-          y: currentY
-        });
-        // Connect all parallel steps to merge point
-        integrationSteps.forEach((_, index) => {
-          const stepId = currentId - integrationSteps.length + index;
-          paths.push({ from: stepId, to: currentId });
-        });
-        currentId++;
-        currentX += 300;
-      } else if (!hasParallelProcessing) {
-        currentX += 150;
-      }
-    }
-    
-    // Add completion step
-    steps.push({
-      id: currentId,
-      name: 'Complete',
-      description: 'Workflow finished successfully',
-      type: 'complete',
-      x: currentX,
-      y: currentY
     });
-    paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
     
     return { steps, paths };
+  };
+  
+  const generateIndustrySpecificWorkflow = (container: Container, fullText: string) => {
+    const industry = container.industry?.toLowerCase() || '';
+    const department = container.department?.toLowerCase() || '';
+    const title = container.title.toLowerCase();
+    
+    // Create workflow based on industry patterns
+    if (industry.includes('finance') || industry.includes('banking')) {
+      return createFinanceWorkflow(title, fullText);
+    } else if (industry.includes('healthcare') || industry.includes('medical')) {
+      return createHealthcareWorkflow(title, fullText);
+    } else if (industry.includes('marketing') || industry.includes('advertising')) {
+      return createMarketingWorkflow(title, fullText);
+    } else if (industry.includes('sales') || department.includes('sales')) {
+      return createSalesWorkflow(title, fullText);
+    } else if (industry.includes('hr') || industry.includes('human') || department.includes('hr')) {
+      return createHRWorkflow(title, fullText);
+    } else if (industry.includes('legal') || department.includes('legal')) {
+      return createLegalWorkflow(title, fullText);
+    } else if (industry.includes('manufacturing') || industry.includes('production')) {
+      return createManufacturingWorkflow(title, fullText);
+    } else if (industry.includes('education') || industry.includes('learning')) {
+      return createEducationWorkflow(title, fullText);
+    } else if (title.includes('customer') || title.includes('support')) {
+      return createCustomerServiceWorkflow(title, fullText);
+    } else if (title.includes('report') || title.includes('analyt')) {
+      return createReportingWorkflow(title, fullText);
+    } else if (title.includes('content') || title.includes('blog') || title.includes('social')) {
+      return createContentWorkflow(title, fullText);
+    } else {
+      return createGenericBusinessWorkflow(title, fullText);
+    }
+  };
+  
+  const createFinanceWorkflow = (title: string, fullText: string) => {
+    const steps: WorkflowStep[] = [];
+    const paths: WorkflowPath[] = [];
+    
+    if (title.includes('invoice') || title.includes('payment')) {
+      return createSteps([
+        { name: 'Receive Invoice', type: 'trigger' },
+        { name: 'Validate Details', type: 'validation', isDecision: true },
+        { name: 'Check Budget', type: 'data' },
+        { name: 'Manager Approval', type: 'review', isManual: true },
+        { name: 'Process Payment', type: 'action' },
+        { name: 'Update Records', type: 'data' },
+        { name: 'Send Confirmation', type: 'complete' }
+      ]);
+    } else if (title.includes('expense') || title.includes('reimburse')) {
+      return createSteps([
+        { name: 'Submit Expense', type: 'trigger' },
+        { name: 'Validate Receipts', type: 'validation' },
+        { name: 'Policy Check', type: 'validation', isDecision: true },
+        { name: 'Approval Workflow', type: 'review', isManual: true },
+        { name: 'Process Reimbursement', type: 'action' },
+        { name: 'Update Accounting', type: 'data' },
+        { name: 'Notify Employee', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Financial Trigger', type: 'trigger' },
+        { name: 'Gather Data', type: 'data' },
+        { name: 'Risk Assessment', type: 'validation' },
+        { name: 'Compliance Check', type: 'validation', isDecision: true },
+        { name: 'Execute Transaction', type: 'action' },
+        { name: 'Audit Trail', type: 'data' },
+        { name: 'Generate Report', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createHealthcareWorkflow = (title: string, fullText: string) => {
+    if (title.includes('patient') || title.includes('admission')) {
+      return createSteps([
+        { name: 'Patient Arrival', type: 'trigger' },
+        { name: 'Check Insurance', type: 'validation' },
+        { name: 'Medical History', type: 'data' },
+        { name: 'Doctor Assessment', type: 'review', isManual: true },
+        { name: 'Treatment Plan', type: 'action' },
+        { name: 'Update Records', type: 'data' },
+        { name: 'Discharge Process', type: 'complete' }
+      ]);
+    } else if (title.includes('prescription') || title.includes('medication')) {
+      return createSteps([
+        { name: 'Prescription Request', type: 'trigger' },
+        { name: 'Verify Dosage', type: 'validation' },
+        { name: 'Drug Interactions', type: 'validation', isDecision: true },
+        { name: 'Pharmacist Review', type: 'review', isManual: true },
+        { name: 'Dispense Medication', type: 'action' },
+        { name: 'Patient Instructions', type: 'action' },
+        { name: 'Record Dispensing', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Health Event', type: 'trigger' },
+        { name: 'Triage Assessment', type: 'validation' },
+        { name: 'Priority Classification', type: 'validation', isDecision: true },
+        { name: 'Clinical Review', type: 'review', isManual: true },
+        { name: 'Care Delivery', type: 'action' },
+        { name: 'Outcome Tracking', type: 'data' },
+        { name: 'Quality Assurance', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createMarketingWorkflow = (title: string, fullText: string) => {
+    if (title.includes('campaign') || title.includes('ad')) {
+      return createSteps([
+        { name: 'Campaign Brief', type: 'trigger' },
+        { name: 'Target Audience', type: 'data' },
+        { name: 'Content Creation', type: 'action' },
+        { name: 'Creative Review', type: 'review', isManual: true },
+        { name: 'Deploy Campaign', type: 'action' },
+        { name: 'Monitor Performance', type: 'data' },
+        { name: 'Analyze Results', type: 'complete' }
+      ]);
+    } else if (title.includes('lead') || title.includes('prospect')) {
+      return createSteps([
+        { name: 'Lead Capture', type: 'trigger' },
+        { name: 'Lead Scoring', type: 'validation' },
+        { name: 'Qualification Check', type: 'validation', isDecision: true },
+        { name: 'Sales Handoff', type: 'action' },
+        { name: 'Follow-up Sequence', type: 'action' },
+        { name: 'Track Conversion', type: 'data' },
+        { name: 'Update CRM', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Marketing Request', type: 'trigger' },
+        { name: 'Strategy Planning', type: 'data' },
+        { name: 'Asset Development', type: 'action' },
+        { name: 'Stakeholder Approval', type: 'review', isManual: true },
+        { name: 'Market Launch', type: 'action' },
+        { name: 'Performance Tracking', type: 'data' },
+        { name: 'ROI Analysis', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createSalesWorkflow = (title: string, fullText: string) => {
+    if (title.includes('opportunity') || title.includes('deal')) {
+      return createSteps([
+        { name: 'New Opportunity', type: 'trigger' },
+        { name: 'Qualify Prospect', type: 'validation' },
+        { name: 'Needs Analysis', type: 'data' },
+        { name: 'Proposal Creation', type: 'action' },
+        { name: 'Negotiation', type: 'action', isManual: true },
+        { name: 'Contract Review', type: 'review' },
+        { name: 'Close Deal', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Sales Inquiry', type: 'trigger' },
+        { name: 'Lead Qualification', type: 'validation', isDecision: true },
+        { name: 'Product Demo', type: 'action' },
+        { name: 'Follow-up Sequence', type: 'action' },
+        { name: 'Proposal Delivery', type: 'action' },
+        { name: 'Decision Timeline', type: 'data' },
+        { name: 'Outcome Recording', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createHRWorkflow = (title: string, fullText: string) => {
+    if (title.includes('hiring') || title.includes('recruit')) {
+      return createSteps([
+        { name: 'Job Posting', type: 'trigger' },
+        { name: 'Resume Screening', type: 'validation' },
+        { name: 'Phone Interview', type: 'action' },
+        { name: 'Technical Assessment', type: 'validation' },
+        { name: 'Final Interview', type: 'review', isManual: true },
+        { name: 'Reference Check', type: 'validation' },
+        { name: 'Offer Decision', type: 'complete' }
+      ]);
+    } else if (title.includes('onboard') || title.includes('orientation')) {
+      return createSteps([
+        { name: 'New Hire Start', type: 'trigger' },
+        { name: 'Documentation', type: 'data' },
+        { name: 'IT Setup', type: 'action' },
+        { name: 'Training Schedule', type: 'action' },
+        { name: 'Manager Meeting', type: 'review', isManual: true },
+        { name: 'Progress Check', type: 'validation' },
+        { name: 'Onboarding Complete', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'HR Request', type: 'trigger' },
+        { name: 'Policy Check', type: 'validation' },
+        { name: 'Employee Record', type: 'data' },
+        { name: 'Manager Review', type: 'review', isManual: true },
+        { name: 'Action Required', type: 'action' },
+        { name: 'Documentation', type: 'data' },
+        { name: 'Case Closure', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createLegalWorkflow = (title: string, fullText: string) => {
+    return createSteps([
+      { name: 'Legal Request', type: 'trigger' },
+      { name: 'Risk Assessment', type: 'validation' },
+      { name: 'Research Required', type: 'data' },
+      { name: 'Legal Review', type: 'review', isManual: true },
+      { name: 'Documentation', type: 'action' },
+      { name: 'Approval Process', type: 'validation', isDecision: true },
+      { name: 'Final Disposition', type: 'complete' }
+    ]);
+  };
+  
+  const createManufacturingWorkflow = (title: string, fullText: string) => {
+    if (title.includes('production') || title.includes('assembly')) {
+      return createSteps([
+        { name: 'Production Order', type: 'trigger' },
+        { name: 'Material Check', type: 'validation' },
+        { name: 'Quality Control', type: 'validation' },
+        { name: 'Assembly Process', type: 'action' },
+        { name: 'Inspection', type: 'review' },
+        { name: 'Packaging', type: 'action' },
+        { name: 'Shipping Ready', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Manufacturing Event', type: 'trigger' },
+        { name: 'Resource Planning', type: 'data' },
+        { name: 'Process Execution', type: 'action' },
+        { name: 'Quality Assurance', type: 'validation' },
+        { name: 'Output Verification', type: 'review' },
+        { name: 'Inventory Update', type: 'data' },
+        { name: 'Process Complete', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createEducationWorkflow = (title: string, fullText: string) => {
+    if (title.includes('grade') || title.includes('assessment')) {
+      return createSteps([
+        { name: 'Assignment Submitted', type: 'trigger' },
+        { name: 'Plagiarism Check', type: 'validation' },
+        { name: 'Initial Review', type: 'review' },
+        { name: 'Grade Assignment', type: 'action', isManual: true },
+        { name: 'Feedback Creation', type: 'action' },
+        { name: 'Grade Recording', type: 'data' },
+        { name: 'Student Notification', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Learning Event', type: 'trigger' },
+        { name: 'Content Delivery', type: 'action' },
+        { name: 'Student Engagement', type: 'data' },
+        { name: 'Progress Assessment', type: 'validation' },
+        { name: 'Feedback Collection', type: 'review' },
+        { name: 'Improvement Planning', type: 'action' },
+        { name: 'Learning Complete', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createCustomerServiceWorkflow = (title: string, fullText: string) => {
+    return createSteps([
+      { name: 'Customer Inquiry', type: 'trigger' },
+      { name: 'Issue Classification', type: 'validation' },
+      { name: 'Priority Assessment', type: 'validation', isDecision: true },
+      { name: 'Agent Assignment', type: 'action' },
+      { name: 'Issue Resolution', type: 'action', isManual: true },
+      { name: 'Customer Confirmation', type: 'validation' },
+      { name: 'Case Closure', type: 'complete' }
+    ]);
+  };
+  
+  const createReportingWorkflow = (title: string, fullText: string) => {
+    return createSteps([
+      { name: 'Data Request', type: 'trigger' },
+      { name: 'Data Collection', type: 'data' },
+      { name: 'Data Validation', type: 'validation' },
+      { name: 'Analysis Process', type: 'action' },
+      { name: 'Report Generation', type: 'action' },
+      { name: 'Quality Review', type: 'review', isManual: true },
+      { name: 'Report Distribution', type: 'complete' }
+    ]);
+  };
+  
+  const createContentWorkflow = (title: string, fullText: string) => {
+    if (title.includes('blog') || title.includes('article')) {
+      return createSteps([
+        { name: 'Content Brief', type: 'trigger' },
+        { name: 'Research Phase', type: 'data' },
+        { name: 'Writing Process', type: 'action' },
+        { name: 'Editorial Review', type: 'review', isManual: true },
+        { name: 'SEO Optimization', type: 'action' },
+        { name: 'Publication', type: 'action' },
+        { name: 'Performance Tracking', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Content Request', type: 'trigger' },
+        { name: 'Creative Planning', type: 'data' },
+        { name: 'Asset Creation', type: 'action' },
+        { name: 'Brand Review', type: 'review', isManual: true },
+        { name: 'Multi-Channel Distribution', type: 'action' },
+        { name: 'Engagement Monitoring', type: 'data' },
+        { name: 'Performance Analysis', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createGenericBusinessWorkflow = (title: string, fullText: string) => {
+    const hasApproval = fullText.toLowerCase().includes('approval') || fullText.toLowerCase().includes('approve');
+    const hasReview = fullText.toLowerCase().includes('review') || fullText.toLowerCase().includes('check');
+    const hasNotification = fullText.toLowerCase().includes('notify') || fullText.toLowerCase().includes('alert');
+    
+    if (hasApproval) {
+      return createSteps([
+        { name: 'Request Initiated', type: 'trigger' },
+        { name: 'Initial Validation', type: 'validation' },
+        { name: 'Documentation Review', type: 'review' },
+        { name: 'Approval Decision', type: 'review', isManual: true, isDecision: true },
+        { name: 'Process Execution', type: 'action' },
+        { name: 'Status Update', type: 'data' },
+        { name: 'Completion Notice', type: 'complete' }
+      ]);
+    } else if (hasReview) {
+      return createSteps([
+        { name: 'Review Request', type: 'trigger' },
+        { name: 'Gather Materials', type: 'data' },
+        { name: 'Analysis Process', type: 'action' },
+        { name: 'Expert Review', type: 'review', isManual: true },
+        { name: 'Recommendations', type: 'action' },
+        { name: 'Report Generation', type: 'data' },
+        { name: 'Review Complete', type: 'complete' }
+      ]);
+    } else {
+      return createSteps([
+        { name: 'Process Start', type: 'trigger' },
+        { name: 'Data Processing', type: 'data' },
+        { name: 'Business Logic', type: 'action' },
+        { name: 'Validation Check', type: 'validation' },
+        { name: 'Output Generation', type: 'action' },
+        { name: 'Quality Assurance', type: 'review' },
+        { name: 'Process Complete', type: 'complete' }
+      ]);
+    }
+  };
+  
+  const createSteps = (stepDefinitions: Array<{name: string, type: string, isDecision?: boolean, isManual?: boolean}>) => {
+    const steps: WorkflowStep[] = [];
+    const paths: WorkflowPath[] = [];
+    
+    stepDefinitions.forEach((def, index) => {
+      const { x, y } = calculateStepPosition(index, stepDefinitions.length);
+      
+      steps.push({
+        id: index + 1,
+        name: def.name,
+        description: def.name,
+        type: def.type,
+        isDecision: def.isDecision || false,
+        isManual: def.isManual || false,
+        isIntegration: def.type === 'integration',
+        errorHandling: def.type === 'error',
+        x,
+        y
+      });
+      
+      if (index > 0) {
+        paths.push({ from: index, to: index + 1 });
+      }
+    });
+    
+    return { steps, paths };
+  };
+  
+  const determineStepType = (description: string, industry?: string) => {
+    const desc = description.toLowerCase();
+    
+    return {
+      type: desc.includes('error') || desc.includes('fail') ? 'error' :
+            desc.includes('trigger') || desc.includes('start') || desc.includes('begin') ? 'trigger' :
+            desc.includes('decision') || desc.includes('check') || desc.includes('verify') || desc.includes('validate') ? 'validation' :
+            desc.includes('review') || desc.includes('approve') || desc.includes('human') ? 'review' :
+            desc.includes('data') || desc.includes('collect') || desc.includes('gather') ? 'data' :
+            desc.includes('complete') || desc.includes('finish') || desc.includes('end') ? 'complete' :
+            'action',
+      isDecision: desc.includes('decision') || desc.includes('if ') || desc.includes('whether') || desc.includes('choose'),
+      isManual: desc.includes('manual') || desc.includes('review') || desc.includes('approve') || desc.includes('human'),
+      isIntegration: desc.includes('api') || desc.includes('external') || desc.includes('integration') || desc.includes('webhook'),
+      errorHandling: desc.includes('error') || desc.includes('fail') || desc.includes('exception')
+    };
+  };
+  
+  const calculateStepPosition = (index: number, totalSteps: number) => {
+    const baseX = 50;
+    const stepWidth = 140;
+    const rowHeight = 120;
+    
+    // Create varied layouts based on step count
+    if (totalSteps <= 4) {
+      // Linear layout
+      return { x: baseX + (index * stepWidth), y: 100 };
+    } else if (totalSteps <= 6) {
+      // Two rows
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      return { x: baseX + (col * stepWidth), y: 100 + (row * rowHeight) };
+    } else {
+      // Three rows with staggered layout
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      const offsetX = row % 2 === 1 ? stepWidth / 2 : 0; // Stagger alternate rows
+      return { x: baseX + (col * stepWidth) + offsetX, y: 80 + (row * (rowHeight * 0.8)) };
+    }
   };
   
   const detectTriggerType = (text: string): string => {
