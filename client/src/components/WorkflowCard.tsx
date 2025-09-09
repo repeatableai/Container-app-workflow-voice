@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit } from "lucide-react";
+import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit, Expand, CheckCircle, ArrowRight, Database, MessageSquare } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,8 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   const [lastRun, setLastRun] = useState<Date | null>(null);
   const [showIframe, setShowIframe] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showExpandedView, setShowExpandedView] = useState(false);
+  const { toast } = useToast();
   const [editForm, setEditForm] = useState({
     title: container.title,
     description: container.description || '',
@@ -64,6 +67,68 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
       });
     }
     setShowEditModal(false);
+  };
+
+  const handleCopyInstructions = async () => {
+    const instructions = container.fullInstructions || container.description || 'No instructions available';
+    try {
+      await navigator.clipboard.writeText(instructions);
+      toast({
+        title: "Copied!",
+        description: "Full instructions copied to clipboard",
+        duration: 2000,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+        duration: 2000,
+      });
+    }
+  };
+
+  const parseWorkflowData = () => {
+    // Try to extract JSONL-formatted data from the container
+    const tags = container.tags || [];
+    const hasJsonlData = tags.includes('jsonl') || tags.includes('imported');
+    
+    if (hasJsonlData && container.fullInstructions) {
+      try {
+        // Try to parse JSON workflow data if available
+        const workflowData = JSON.parse(container.fullInstructions);
+        return {
+          isJsonl: true,
+          title: workflowData.Prompt_Name || container.title,
+          description: workflowData.What_it_does || container.description,
+          importance: workflowData.Why_It_matters || '',
+          timeComparison: workflowData['Avg._time_spent_manual_vs_automatic'] || '',
+          visualFlow: workflowData.Visual_Flowchart || '',
+          workflowJson: workflowData.Workflow_JSON || ''
+        };
+      } catch (error) {
+        // If parsing fails, use regular container data
+        return {
+          isJsonl: false,
+          title: container.title,
+          description: container.description || '',
+          importance: '',
+          timeComparison: '',
+          visualFlow: '',
+          workflowJson: ''
+        };
+      }
+    }
+    
+    return {
+      isJsonl: false,
+      title: container.title,
+      description: container.description || '',
+      importance: '',
+      timeComparison: '',
+      visualFlow: '',
+      workflowJson: ''
+    };
   };
 
   const formatDate = (date: Date | string | null | undefined) => {
@@ -119,7 +184,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </Badge>
             <UrlStatusIcon 
               status={container.urlStatus} 
-              lastChecked={container.urlLastChecked} 
+              lastChecked={container.urlLastChecked ? new Date(container.urlLastChecked) : null} 
               error={container.urlCheckError} 
             />
           </div>
@@ -216,6 +281,14 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             <Play className="w-4 h-4 mr-2" />
             {isRunning ? 'Executing...' : 'Execute'}
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowExpandedView(true)}
+            data-testid="expand-button"
+          >
+            <Expand className="w-4 h-4" />
+          </Button>
           {canEdit && (
             <Button 
               variant="outline" 
@@ -300,6 +373,204 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Expanded View Modal */}
+      <Dialog open={showExpandedView} onOpenChange={setShowExpandedView}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Workflow className="w-5 h-5" />
+              {parseWorkflowData().isJsonl ? parseWorkflowData().title : container.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh] pr-2">
+            {/* Left Column - Workflow Details */}
+            <div className="space-y-4">
+              {/* JSONL Data Badge */}
+              {parseWorkflowData().isJsonl && (
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                  JSONL Imported Workflow
+                </Badge>
+              )}
+              
+              {/* Full Instructions with Copy Button */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Full Instructions</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleCopyInstructions}
+                    className="h-7 px-2"
+                    data-testid="copy-instructions"
+                  >
+                    <Copy className="w-3 h-3 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <Textarea
+                  value={container.fullInstructions || container.description || 'No instructions available'}
+                  readOnly
+                  rows={6}
+                  className="text-xs bg-muted font-mono"
+                  data-testid="full-instructions"
+                />
+              </div>
+
+              {/* JSONL Specific Data */}
+              {parseWorkflowData().isJsonl && (
+                <>
+                  {parseWorkflowData().importance && (
+                    <div>
+                      <Label className="text-sm font-medium">Why It Matters</Label>
+                      <p className="text-sm text-muted-foreground mt-1">{parseWorkflowData().importance}</p>
+                    </div>
+                  )}
+                  
+                  {parseWorkflowData().timeComparison && (
+                    <div>
+                      <Label className="text-sm font-medium">Time Comparison</Label>
+                      <p className="text-sm text-muted-foreground mt-1">{parseWorkflowData().timeComparison}</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Workflow Metrics */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BarChart3 className="w-4 h-4 text-green-600" />
+                    <span className="text-xs font-medium text-green-700 dark:text-green-300">Executions</span>
+                  </div>
+                  <div className="text-lg font-bold text-green-800 dark:text-green-200">{workflowStats.executions}</div>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Success Rate</span>
+                  </div>
+                  <div className="text-lg font-bold text-emerald-800 dark:text-emerald-200">{workflowStats.successRate}%</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Visual Workflow */}
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Database className="w-4 h-4" />
+                  Visual Workflow
+                </Label>
+                
+                {parseWorkflowData().visualFlow ? (
+                  /* JSONL Visual Flow */
+                  <div className="bg-muted rounded-lg p-4 mt-2">
+                    <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground">
+                      {parseWorkflowData().visualFlow}
+                    </pre>
+                  </div>
+                ) : (
+                  /* Generic Visual Flow */
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 mt-2 border border-green-200 dark:border-green-800">
+                    <div className="space-y-4 text-sm">
+                      {/* Start Node */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                          <Play className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-green-800 dark:text-green-200">Start Workflow</div>
+                          <div className="text-xs text-muted-foreground">Initialize process</div>
+                        </div>
+                      </div>
+                      
+                      {/* Arrow */}
+                      <div className="flex justify-center">
+                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      
+                      {/* Process Node */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Settings className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-blue-800 dark:text-blue-200">Process Data</div>
+                          <div className="text-xs text-muted-foreground">{parseWorkflowData().description || 'Execute workflow logic'}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Arrow */}
+                      <div className="flex justify-center">
+                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      
+                      {/* Decision Node */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <MessageSquare className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-yellow-800 dark:text-yellow-200">Validation</div>
+                          <div className="text-xs text-muted-foreground">Verify results and conditions</div>
+                        </div>
+                      </div>
+                      
+                      {/* Arrow */}
+                      <div className="flex justify-center">
+                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      
+                      {/* End Node */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-green-800 dark:text-green-200">Complete</div>
+                          <div className="text-xs text-muted-foreground">Workflow finished successfully</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Workflow JSON (if available) */}
+              {parseWorkflowData().workflowJson && (
+                <div>
+                  <Label className="text-sm font-medium">Workflow Definition</Label>
+                  <Textarea
+                    value={parseWorkflowData().workflowJson}
+                    readOnly
+                    rows={8}
+                    className="text-xs bg-muted font-mono mt-2"
+                    data-testid="workflow-json"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowExpandedView(false)}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={handleCopyInstructions}
+              data-testid="copy-instructions-footer"
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Copy Instructions
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
