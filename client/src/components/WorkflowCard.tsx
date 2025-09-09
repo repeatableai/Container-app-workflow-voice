@@ -464,6 +464,73 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     }
   };
 
+  // Parse JSON workflow structure from fullInstructions
+  const parseJSONWorkflow = (): { steps: WorkflowStep[], paths: WorkflowPath[] } => {
+    if (!container.fullInstructions) {
+      return { steps: [], paths: [] };
+    }
+    
+    try {
+      const parsed = JSON.parse(container.fullInstructions);
+      const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+      
+      if (workflowJSON.workflow_steps && Array.isArray(workflowJSON.workflow_steps)) {
+        const steps: WorkflowStep[] = workflowJSON.workflow_steps.map((step: any, index: number) => {
+          let stepType = "process";
+          let isDecision = false;
+          let isManual = false;
+          let isIntegration = false;
+          
+          // Determine step type based on action/description
+          const action = (step.action || step.description || "").toLowerCase();
+          if (action.includes("decision") || action.includes("analyze") || action.includes("assess") || action.includes("priority")) {
+            stepType = "validation";
+            isDecision = true;
+          } else if (action.includes("manual") || action.includes("review") || action.includes("approve")) {
+            stepType = "manual";
+            isManual = true;
+          } else if (action.includes("notify") || action.includes("send") || action.includes("alert") || action.includes("completion")) {
+            stepType = "complete";
+          } else if (action.includes("receive") || action.includes("capture") || action.includes("input") || action.includes("request")) {
+            stepType = "trigger";
+          } else if (action.includes("sync") || action.includes("integrate") || action.includes("connect") || action.includes("update") && action.includes("system")) {
+            stepType = "integration";
+            isIntegration = true;
+          } else if (action.includes("execute") || action.includes("automate") || action.includes("process")) {
+            stepType = "process";
+          }
+          
+          return {
+            id: step.step || index + 1,
+            name: step.action?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || `Step ${index + 1}`,
+            description: step.description || step.action || "Process step",
+            type: stepType,
+            x: 50 + (index * 160),
+            y: 100 + ((index % 2) * 80),
+            isDecision,
+            isManual,
+            isIntegration
+          };
+        });
+        
+        // Generate paths connecting steps
+        const paths: WorkflowPath[] = [];
+        for (let i = 0; i < steps.length - 1; i++) {
+          paths.push({
+            from: steps[i].id,
+            to: steps[i + 1].id
+          });
+        }
+        
+        return { steps, paths };
+      }
+    } catch (error) {
+      console.log("Could not parse workflow JSON:", error);
+    }
+    
+    return { steps: [], paths: [] };
+  };
+
   const parseWorkflowData = () => {
     // Try to extract JSONL-formatted data from the container
     const tags = container.tags || [];
@@ -508,6 +575,13 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   };
 
   const analyzeWorkflowComplexity = () => {
+    // First try to parse JSON workflow structure
+    const jsonWorkflow = parseJSONWorkflow();
+    if (jsonWorkflow.steps.length > 0) {
+      return jsonWorkflow;
+    }
+    
+    // Fallback to text analysis if JSON parsing fails
     const workflowData = parseWorkflowData();
     
     // Analyze workflow text for complex patterns
@@ -1089,25 +1163,42 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
 
             {/* Instructions Tab */}
             <TabsContent value="instructions" className="space-y-6 mt-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-lg font-medium">Full Workflow Instructions</Label>
-                  <Button
-                    onClick={handleCopyInstructions}
-                    data-testid="copy-instructions-tab"
-                    className="flex items-center gap-2"
-                  >
-                    <Copy className="w-4 h-4" />
-                    Copy to Clipboard
-                  </Button>
+              <div className="space-y-6">
+                {/* Text Instructions Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-lg font-medium flex items-center gap-2">
+                      📄 Text Instructions
+                    </Label>
+                    <Button
+                      onClick={handleCopyInstructions}
+                      data-testid="copy-instructions-tab"
+                      className="flex items-center gap-2"
+                    >
+                      <Copy className="w-4 h-4" />
+                      Copy All
+                    </Button>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4 space-y-3 text-sm">
+                    <div><strong className="text-blue-700 dark:text-blue-300">Description:</strong> <span className="text-gray-700 dark:text-gray-300">{container.description || 'No description available'}</span></div>
+                    <div><strong className="text-green-700 dark:text-green-300">Title:</strong> <span className="text-gray-700 dark:text-gray-300">{container.title || 'Untitled Workflow'}</span></div>
+                    <div><strong className="text-purple-700 dark:text-purple-300">Type:</strong> <span className="text-gray-700 dark:text-gray-300">Automation Workflow</span></div>
+                  </div>
                 </div>
-                <Textarea
-                  value={container.fullInstructions || container.description || 'No instructions available'}
-                  readOnly
-                  rows={15}
-                  className="text-sm bg-muted font-mono"
-                  data-testid="full-instructions-tab"
-                />
+
+                {/* JSON Workflow Section */}
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium flex items-center gap-2">
+                    ⚙️ JSON Workflow Structure
+                  </Label>
+                  <Textarea
+                    value={container.fullInstructions || 'No workflow data available.'}
+                    readOnly
+                    rows={12}
+                    className="text-xs bg-muted font-mono"
+                    data-testid="full-instructions-tab"
+                  />
+                </div>
                 
                 {/* Workflow Steps Summary */}
                 <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg border">
