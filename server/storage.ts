@@ -307,6 +307,54 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDepartmentsWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    if (type === 'workflow') {
+      // For workflows, extract departments from titles using intelligent parsing
+      const result = await db
+        .select({
+          title: containers.title,
+          description: containers.description,
+        })
+        .from(containers)
+        .where(and(
+          eq(containers.type, 'workflow'),
+          eq(containers.isMarketplace, true)
+        ));
+      
+      const departments = new Map<string, number>();
+      
+      result.forEach(r => {
+        const title = r.title?.toLowerCase() || '';
+        const description = r.description?.toLowerCase() || '';
+        const text = `${title} ${description}`;
+        
+        // Smart categorization based on job roles and departments in titles
+        if (text.includes('human resources') || text.includes('hr specialist')) {
+          departments.set('Human Resources', (departments.get('Human Resources') || 0) + 1);
+        } else if (text.includes('administrative assistant') || text.includes('admin')) {
+          departments.set('Administration', (departments.get('Administration') || 0) + 1);
+        } else if (text.includes('executive assistant')) {
+          departments.set('Executive Office', (departments.get('Executive Office') || 0) + 1);
+        } else if (text.includes('facilities manager') || text.includes('facilities')) {
+          departments.set('Facilities', (departments.get('Facilities') || 0) + 1);
+        } else if (text.includes('marketing') || text.includes('social media')) {
+          departments.set('Marketing', (departments.get('Marketing') || 0) + 1);
+        } else if (text.includes('finance') || text.includes('accounting') || text.includes('budget')) {
+          departments.set('Finance', (departments.get('Finance') || 0) + 1);
+        } else if (text.includes('sales') || text.includes('business development')) {
+          departments.set('Sales', (departments.get('Sales') || 0) + 1);
+        } else if (text.includes('it') || text.includes('technical') || text.includes('support')) {
+          departments.set('IT Support', (departments.get('IT Support') || 0) + 1);
+        } else if (text.includes('operations') || text.includes('management')) {
+          departments.set('Operations', (departments.get('Operations') || 0) + 1);
+        } else {
+          departments.set('General Business', (departments.get('General Business') || 0) + 1);
+        }
+      });
+      
+      return Array.from(departments.entries()).map(([name, count]) => ({ name, count }));
+    }
+    
+    // For other types, use the existing department field
     let whereConditions = [sql`${containers.department} IS NOT NULL`, eq(containers.isMarketplace, true)];
     
     if (type) {
@@ -326,8 +374,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUseCasesWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
-    let whereConditions = [sql`${containers.useCase} IS NOT NULL`, eq(containers.isMarketplace, true)];
+    if (type === 'voice') {
+      // For voices, extract use cases from ai_voice_agent_type field
+      const result = await db
+        .select({
+          aiVoiceAgentType: containers.aiVoiceAgentType,
+          count: sql<number>`count(*)`
+        })
+        .from(containers)
+        .where(and(
+          eq(containers.type, 'voice'),
+          eq(containers.isMarketplace, true),
+          sql`${containers.aiVoiceAgentType} IS NOT NULL`
+        ))
+        .groupBy(containers.aiVoiceAgentType);
+      
+      return result.map(r => ({ name: r.aiVoiceAgentType!, count: r.count })).filter(item => item.name);
+    }
+
+    if (type === 'workflow') {
+      // For workflows, extract use cases from titles and descriptions using intelligent parsing
+      const result = await db
+        .select({
+          title: containers.title,
+          description: containers.description,
+        })
+        .from(containers)
+        .where(and(
+          eq(containers.type, 'workflow'),
+          eq(containers.isMarketplace, true)
+        ));
+      
+      const useCases = new Map<string, number>();
+      
+      result.forEach(r => {
+        const title = r.title?.toLowerCase() || '';
+        const description = r.description?.toLowerCase() || '';
+        const text = `${title} ${description}`;
+        
+        // Smart categorization based on keywords in titles/descriptions
+        if (text.includes('scheduling') || text.includes('meeting') || text.includes('calendar')) {
+          useCases.set('Scheduling & Meetings', (useCases.get('Scheduling & Meetings') || 0) + 1);
+        } else if (text.includes('document') && (text.includes('prep') || text.includes('format'))) {
+          useCases.set('Document Management', (useCases.get('Document Management') || 0) + 1);
+        } else if (text.includes('data entry') || text.includes('reporting')) {
+          useCases.set('Data Entry & Reporting', (useCases.get('Data Entry & Reporting') || 0) + 1);
+        } else if (text.includes('travel') || text.includes('expense')) {
+          useCases.set('Travel & Expense Management', (useCases.get('Travel & Expense Management') || 0) + 1);
+        } else if (text.includes('maintenance') || text.includes('facilities')) {
+          useCases.set('Facilities Management', (useCases.get('Facilities Management') || 0) + 1);
+        } else if (text.includes('budget') || text.includes('financial') || text.includes('cost')) {
+          useCases.set('Financial Management', (useCases.get('Financial Management') || 0) + 1);
+        } else if (text.includes('compliance') || text.includes('audit')) {
+          useCases.set('Compliance & Audit', (useCases.get('Compliance & Audit') || 0) + 1);
+        } else if (text.includes('communication') || text.includes('email') || text.includes('slack')) {
+          useCases.set('Communication Automation', (useCases.get('Communication Automation') || 0) + 1);
+        } else if (text.includes('hr') || text.includes('human resources') || text.includes('employee')) {
+          useCases.set('Human Resources', (useCases.get('Human Resources') || 0) + 1);
+        } else if (text.includes('admin') || text.includes('coordination')) {
+          useCases.set('Administrative Support', (useCases.get('Administrative Support') || 0) + 1);
+        } else {
+          useCases.set('General Automation', (useCases.get('General Automation') || 0) + 1);
+        }
+      });
+      
+      return Array.from(useCases.entries()).map(([name, count]) => ({ name, count }));
+    }
     
+    // For apps or fallback, try useCase field first
+    let whereConditions = [sql`${containers.useCase} IS NOT NULL`, eq(containers.isMarketplace, true)];
     if (type) {
       whereConditions.push(eq(containers.type, type as 'app' | 'voice' | 'workflow'));
     }
