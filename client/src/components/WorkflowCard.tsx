@@ -184,7 +184,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </Badge>
             <UrlStatusIcon 
               status={container.urlStatus} 
-              lastChecked={container.urlLastChecked ? new Date(container.urlLastChecked) : null} 
+              lastChecked={container.urlLastChecked} 
               error={container.urlCheckError} 
             />
           </div>
