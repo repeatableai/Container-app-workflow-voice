@@ -286,6 +286,44 @@ export class DatabaseStorage implements IStorage {
     
     return result.map(r => r.department).filter(Boolean) as string[];
   }
+
+  async getIndustriesWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    let whereConditions = [sql`${containers.industry} IS NOT NULL`, eq(containers.isMarketplace, true)];
+    
+    if (type) {
+      whereConditions.push(eq(containers.type, type as 'app' | 'voice' | 'workflow'));
+    }
+    
+    const result = await db
+      .select({
+        industry: containers.industry,
+        count: sql<number>`count(*)`
+      })
+      .from(containers)
+      .where(and(...whereConditions))
+      .groupBy(containers.industry);
+    
+    return result.map(r => ({ name: r.industry!, count: r.count })).filter(item => item.name);
+  }
+
+  async getDepartmentsWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    let whereConditions = [sql`${containers.department} IS NOT NULL`, eq(containers.isMarketplace, true)];
+    
+    if (type) {
+      whereConditions.push(eq(containers.type, type as 'app' | 'voice' | 'workflow'));
+    }
+    
+    const result = await db
+      .select({
+        department: containers.department,
+        count: sql<number>`count(*)`
+      })
+      .from(containers)
+      .where(and(...whereConditions))
+      .groupBy(containers.department);
+    
+    return result.map(r => ({ name: r.department!, count: r.count })).filter(item => item.name);
+  }
   
   // Company operations
   async getCompany(id: string): Promise<Company | undefined> {

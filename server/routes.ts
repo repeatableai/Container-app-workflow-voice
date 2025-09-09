@@ -749,7 +749,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Filter options
   app.get('/api/filters/industries', isAuthenticated, async (req: any, res) => {
     try {
-      const industries = await storage.getIndustries();
+      const { type } = req.query;
+      const industries = await storage.getIndustriesWithCounts(type as string);
       res.json(industries);
     } catch (error) {
       console.error("Error fetching industries:", error);
@@ -759,7 +760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/filters/departments', isAuthenticated, async (req: any, res) => {
     try {
-      const departments = await storage.getDepartments();
+      const { type } = req.query;
+      const departments = await storage.getDepartmentsWithCounts(type as string);
       res.json(departments);
     } catch (error) {
       console.error("Error fetching departments:", error);

@@ -26,14 +26,26 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
     useCases: true,
   });
 
-  // Fetch filter options
-  const { data: industries = [] } = useQuery<string[]>({
-    queryKey: ['/api/filters/industries'],
+  // Fetch filter options with tab-specific results and counts
+  const { data: industries = [] } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['/api/filters/industries', activeTab],
+    queryFn: async () => {
+      const response = await fetch(`/api/filters/industries?type=${activeTab}`, {
+        credentials: 'include'
+      });
+      return response.json();
+    },
     retry: false,
   });
 
-  const { data: departments = [] } = useQuery<string[]>({
-    queryKey: ['/api/filters/departments'],
+  const { data: departments = [] } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['/api/filters/departments', activeTab],
+    queryFn: async () => {
+      const response = await fetch(`/api/filters/departments?type=${activeTab}`, {
+        credentials: 'include'
+      });
+      return response.json();
+    },
     retry: false,
   });
 
@@ -198,19 +210,24 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                     <div className="text-xs text-muted-foreground">No industries found</div>
                   ) : (
                     industries.map((industry) => (
-                      <div key={industry} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`industry-${industry}`}
-                          checked={filters.industries.includes(industry)}
-                          onCheckedChange={(checked) => handleFilterChange('industries', industry, !!checked)}
-                          data-testid={`filter-industry-${industry}`}
-                        />
-                        <label 
-                          htmlFor={`industry-${industry}`} 
-                          className="text-sm text-muted-foreground cursor-pointer"
-                        >
-                          {industry}
-                        </label>
+                      <div key={industry.name} className="flex items-center justify-between space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`industry-${industry.name}`}
+                            checked={filters.industries.includes(industry.name)}
+                            onCheckedChange={(checked) => handleFilterChange('industries', industry.name, !!checked)}
+                            data-testid={`filter-industry-${industry.name}`}
+                          />
+                          <label 
+                            htmlFor={`industry-${industry.name}`} 
+                            className="text-sm text-muted-foreground cursor-pointer"
+                          >
+                            {industry.name}
+                          </label>
+                        </div>
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                          {industry.count}
+                        </span>
                       </div>
                     ))
                   )}
@@ -233,19 +250,24 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                     <div className="text-xs text-muted-foreground">No departments found</div>
                   ) : (
                     departments.map((department) => (
-                      <div key={department} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`department-${department}`}
-                          checked={filters.departments.includes(department)}
-                          onCheckedChange={(checked) => handleFilterChange('departments', department, !!checked)}
-                          data-testid={`filter-department-${department}`}
-                        />
-                        <label 
-                          htmlFor={`department-${department}`} 
-                          className="text-sm text-muted-foreground cursor-pointer"
-                        >
-                          {department}
-                        </label>
+                      <div key={department.name} className="flex items-center justify-between space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`department-${department.name}`}
+                            checked={filters.departments.includes(department.name)}
+                            onCheckedChange={(checked) => handleFilterChange('departments', department.name, !!checked)}
+                            data-testid={`filter-department-${department.name}`}
+                          />
+                          <label 
+                            htmlFor={`department-${department.name}`} 
+                            className="text-sm text-muted-foreground cursor-pointer"
+                          >
+                            {department.name}
+                          </label>
+                        </div>
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                          {department.count}
+                        </span>
                       </div>
                     ))
                   )}
