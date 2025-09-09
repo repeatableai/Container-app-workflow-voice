@@ -192,10 +192,10 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
         </div>
 
         {/* Industry/Department Info */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-blue-100 dark:border-blue-900">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-sky-100 dark:border-sky-900">
           <div className="flex items-center gap-3">
             {container.industry && (
-              <span className="bg-blue-100 dark:bg-blue-900/50 px-2 py-1 rounded text-blue-700 dark:text-blue-300">
+              <span className="bg-sky-100 dark:bg-sky-900/50 px-2 py-1 rounded text-sky-700 dark:text-sky-300">
                 {container.industry}
               </span>
             )}
