@@ -942,6 +942,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Proxy endpoint for iframe embedding
+  app.get('/api/proxy/:containerId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { containerId } = req.params;
+      
+      // Get the container and verify access
+      const container = await storage.getContainerById(containerId);
+      if (!container) {
+        return res.status(404).json({ message: "Container not found" });
+      }
+      
+      if (!container.url) {
+        return res.status(400).json({ message: "Container has no URL to proxy" });
+      }
+      
+      console.log(`[PROXY] Fetching ${container.url} for user ${userId}`);
+      
+      // Fetch the external content
+      const response = await fetch(container.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
+      });
+      
+      if (!response.ok) {
+        console.log(`[PROXY] Failed to fetch ${container.url}: ${response.status}`);
+        return res.status(502).json({ 
+          message: "Failed to fetch external content", 
+          status: response.status,
+          statusText: response.statusText 
+        });
+      }
+      
+      const content = await response.text();
+      const contentType = response.headers.get('content-type') || 'text/html';
+      
+      // Rewrite relative URLs to absolute URLs
+      const baseUrl = new URL(container.url);
+      let modifiedContent = content;
+      
+      // Fix relative links, scripts, and assets
+      modifiedContent = modifiedContent.replace(
+        /(href|src|action)=(["'])(?!\/\/|https?:|\/\/)(\/?[^"']*)["']/gi,
+        (match, attr, quote, path) => {
+          try {
+            const absoluteUrl = new URL(path, baseUrl).toString();
+            return `${attr}=${quote}${absoluteUrl}${quote}`;
+          } catch {
+            return match; // Keep original if URL construction fails
+          }
+        }
+      );
+      
+      // Add base tag to handle remaining relative URLs
+      const baseTag = `<base href="${baseUrl.origin}${baseUrl.pathname.endsWith('/') ? baseUrl.pathname : baseUrl.pathname + '/'}"/>`;
+      modifiedContent = modifiedContent.replace(
+        /<head[^>]*>/i,
+        (match) => `${match}\n${baseTag}`
+      );
+      
+      // Set headers to allow iframe embedding and prevent caching issues
+      res.set({
+        'Content-Type': contentType,
+        'Content-Security-Policy': 'frame-ancestors *;', // Allow embedding from any origin
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      // Explicitly remove headers that would block embedding
+      res.removeHeader('X-Frame-Options');
+      
+      console.log(`[PROXY] Successfully proxied ${container.url} (${content.length} bytes)`);
+      res.send(modifiedContent);
+      
+    } catch (error) {
+      console.error(`[PROXY] Error proxying content:`, error);
+      res.status(500).json({ 
+        message: "Proxy error", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
