@@ -238,15 +238,15 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
                       <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Monitor className="w-8 h-8 text-orange-600 dark:text-orange-400" />
                       </div>
-                      <h3 className="font-semibold mb-3 text-lg text-foreground">Preview Not Available</h3>
+                      <h3 className="font-semibold mb-3 text-lg text-foreground">Preview Unavailable</h3>
                       <div className="space-y-3 text-sm text-muted-foreground">
-                        <p className="font-medium text-orange-700 dark:text-orange-300">Why this happens:</p>
+                        <p className="font-medium text-orange-700 dark:text-orange-300">Possible causes:</p>
                         <div className="text-left space-y-2 bg-white/60 dark:bg-gray-900/60 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                          <p>• <strong>Security Headers:</strong> The app blocks embedding to prevent clickjacking</p>
-                          <p>• <strong>Authentication:</strong> Login screens don't work in preview mode</p>
-                          <p>• <strong>HTTPS/SSL:</strong> Mixed content security restrictions</p>
+                          <p>• <strong>Network Issues:</strong> App server might be temporarily down</p>
+                          <p>• <strong>Authentication Required:</strong> App needs login before displaying content</p>
+                          <p>• <strong>Complex JavaScript:</strong> App uses features incompatible with preview mode</p>
                         </div>
-                        <p className="text-center font-medium text-foreground">This is normal - most professional apps intentionally prevent embedding.</p>
+                        <p className="text-center font-medium text-foreground">Most apps work better in their own tab with full functionality.</p>
                       </div>
                       <div className="mt-6 space-y-3">
                         <Button onClick={openInNewTab} className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600">
@@ -261,7 +261,7 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
                   </div>
                 ) : (
                   <iframe
-                    src={container.url}
+                    src={`/api/proxy/${container.id}`}
                     className="w-full h-full border-0"
                     title={container.title}
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
