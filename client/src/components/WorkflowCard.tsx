@@ -26,10 +26,26 @@ interface WorkflowStep {
   name: string;
   description: string;
   type: string;
+  x?: number;
+  y?: number;
+  connections?: number[];
+  isDecision?: boolean;
+  isManual?: boolean;
+  isIntegration?: boolean;
+  errorHandling?: boolean;
+  parallel?: boolean;
+}
+
+interface WorkflowPath {
+  from: number;
+  to: number;
+  condition?: string;
+  isError?: boolean;
+  isRetry?: boolean;
 }
 
 interface DynamicWorkflowCanvasProps {
-  steps: WorkflowStep[];
+  workflowData: { steps: WorkflowStep[]; paths: WorkflowPath[] };
   containerId: string;
 }
 
@@ -59,142 +75,322 @@ const getStepIcon = (type: string) => {
   }
 };
 
-function DynamicWorkflowCanvas({ steps, containerId }: DynamicWorkflowCanvasProps) {
-  const stepWidth = 160;
-  const stepHeight = 60;
-  const startX = 100;
-  const stepGap = 180;
-  const viewBoxWidth = Math.max(800, startX + (steps.length * stepGap) + 200);
+function DynamicWorkflowCanvas({ workflowData, containerId }: DynamicWorkflowCanvasProps) {
+  const { steps, paths } = workflowData;
+  
+  // Calculate viewBox dimensions based on step positions
+  const maxX = Math.max(...steps.map(s => s.x || 0)) + 200;
+  const maxY = Math.max(...steps.map(s => s.y || 0)) + 150;
+  const viewBoxWidth = Math.max(800, maxX);
+  const viewBoxHeight = Math.max(400, maxY);
+
+  const renderNode = (step: WorkflowStep) => {
+    const colors = getStepColor(step.type);
+    const icon = getStepIcon(step.type);
+    const x = step.x || 0;
+    const y = step.y || 0;
+    
+    // Decision nodes are diamond-shaped
+    if (step.isDecision) {
+      return (
+        <g key={step.id}>
+          {/* Decision Diamond */}
+          <polygon
+            points={`${x + 40},${y} ${x + 80},${y + 30} ${x + 40},${y + 60} ${x},${y + 30}`}
+            fill={colors.bg}
+            stroke={colors.border}
+            strokeWidth="2"
+          />
+          
+          {/* Decision Icon */}
+          <text 
+            x={x + 40} 
+            y={y + 20} 
+            textAnchor="middle" 
+            className="fill-white text-xs"
+          >
+            ❓
+          </text>
+          
+          {/* Decision Text */}
+          <text 
+            x={x + 40} 
+            y={y + 40} 
+            textAnchor="middle" 
+            className="fill-white text-xs font-medium"
+          >
+            {step.name.length > 8 ? step.name.substring(0, 8) + '...' : step.name}
+          </text>
+        </g>
+      );
+    }
+    
+    // Manual steps have special indicators
+    if (step.isManual) {
+      return (
+        <g key={step.id}>
+          {/* Manual Step Rectangle with special border */}
+          <rect 
+            x={x} 
+            y={y} 
+            width="120" 
+            height="60" 
+            rx="8" 
+            fill={colors.bg} 
+            stroke={colors.border} 
+            strokeWidth="3"
+            strokeDasharray="5,5"
+          />
+          
+          {/* Manual Icon */}
+          <text 
+            x={x + 20} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-lg"
+          >
+            👤
+          </text>
+          
+          {/* Step Name */}
+          <text 
+            x={x + 70} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-sm font-medium"
+          >
+            {step.name.length > 10 ? step.name.substring(0, 10) + '...' : step.name}
+          </text>
+          
+          <text 
+            x={x + 70} 
+            y={y + 40} 
+            textAnchor="middle" 
+            className="fill-white text-xs"
+          >
+            Manual Review
+          </text>
+        </g>
+      );
+    }
+    
+    // Integration nodes have special styling
+    if (step.isIntegration) {
+      return (
+        <g key={step.id}>
+          {/* Integration Hexagon */}
+          <polygon
+            points={`${x + 20},${y} ${x + 100},${y} ${x + 120},${y + 30} ${x + 100},${y + 60} ${x + 20},${y + 60} ${x},${y + 30}`}
+            fill={colors.bg}
+            stroke={colors.border}
+            strokeWidth="2"
+          />
+          
+          {/* Integration Icon */}
+          <text 
+            x={x + 25} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-sm"
+          >
+            🔌
+          </text>
+          
+          {/* Step Name */}
+          <text 
+            x={x + 70} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-xs font-medium"
+          >
+            {step.name.length > 12 ? step.name.substring(0, 12) + '...' : step.name}
+          </text>
+          
+          <text 
+            x={x + 70} 
+            y={y + 40} 
+            textAnchor="middle" 
+            className="fill-white text-xs"
+          >
+            External API
+          </text>
+        </g>
+      );
+    }
+    
+    // Error handling nodes
+    if (step.errorHandling) {
+      return (
+        <g key={step.id}>
+          {/* Error Rectangle with warning styling */}
+          <rect 
+            x={x} 
+            y={y} 
+            width="120" 
+            height="60" 
+            rx="8" 
+            fill="#ef4444" 
+            stroke="#dc2626" 
+            strokeWidth="2"
+          />
+          
+          {/* Error Icon */}
+          <text 
+            x={x + 20} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-lg"
+          >
+            ⚠️
+          </text>
+          
+          {/* Step Name */}
+          <text 
+            x={x + 70} 
+            y={y + 25} 
+            textAnchor="middle" 
+            className="fill-white text-sm font-medium"
+          >
+            {step.name.length > 10 ? step.name.substring(0, 10) + '...' : step.name}
+          </text>
+          
+          <text 
+            x={x + 70} 
+            y={y + 40} 
+            textAnchor="middle" 
+            className="fill-white text-xs"
+          >
+            Error Handler
+          </text>
+        </g>
+      );
+    }
+    
+    // Standard rectangular nodes
+    return (
+      <g key={step.id}>
+        {/* Standard Rectangle */}
+        <rect 
+          x={x} 
+          y={y} 
+          width="120" 
+          height="60" 
+          rx="8" 
+          fill={colors.bg} 
+          stroke={colors.border} 
+          strokeWidth="2" 
+        />
+        
+        {/* Icon Background */}
+        <rect 
+          x={x + 8} 
+          y={y + 8} 
+          width="20" 
+          height="20" 
+          rx="3" 
+          fill="rgba(255,255,255,0.2)" 
+        />
+        
+        {/* Icon */}
+        <text 
+          x={x + 18} 
+          y={y + 21} 
+          textAnchor="middle" 
+          className="fill-white text-xs"
+        >
+          {icon}
+        </text>
+        
+        {/* Step Name */}
+        <text 
+          x={x + 70} 
+          y={y + 25} 
+          textAnchor="middle" 
+          className="fill-white text-sm font-medium"
+        >
+          {step.name.length > 12 ? step.name.substring(0, 12) + '...' : step.name}
+        </text>
+        
+        {/* Step Description */}
+        {step.description && (
+          <text 
+            x={x + 70} 
+            y={y + 40} 
+            textAnchor="middle" 
+            className="fill-white text-xs"
+          >
+            {step.description.length > 15 ? step.description.substring(0, 15) + '...' : step.description}
+          </text>
+        )}
+      </g>
+    );
+  };
+
+  const renderPath = (path: WorkflowPath, index: number) => {
+    const fromStep = steps.find(s => s.id === path.from);
+    const toStep = steps.find(s => s.id === path.to);
+    
+    if (!fromStep || !toStep) return null;
+    
+    const fromX = (fromStep.x || 0) + (fromStep.isDecision ? 40 : 120);
+    const fromY = (fromStep.y || 0) + 30;
+    const toX = toStep.x || 0;
+    const toY = (toStep.y || 0) + 30;
+    
+    const strokeColor = path.isError ? '#dc2626' : path.isRetry ? '#f59e0b' : '#059669';
+    const strokeWidth = path.isError || path.isRetry ? 2 : 3;
+    const strokeDashArray = path.isRetry ? '5,5' : 'none';
+    
+    return (
+      <g key={`path-${index}`}>
+        {/* Connection Line */}
+        <line 
+          x1={fromX} 
+          y1={fromY} 
+          x2={toX} 
+          y2={toY} 
+          stroke={strokeColor} 
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDashArray}
+          markerEnd={`url(#arrowhead-${path.isError ? 'error' : path.isRetry ? 'retry' : 'normal'}-${containerId})`}
+        />
+        
+        {/* Condition Label */}
+        {path.condition && (
+          <text 
+            x={(fromX + toX) / 2} 
+            y={(fromY + toY) / 2 - 5} 
+            textAnchor="middle" 
+            className="fill-gray-600 text-xs font-medium"
+          >
+            {path.condition}
+          </text>
+        )}
+      </g>
+    );
+  };
 
   return (
     <div className="relative z-10">
-      <svg viewBox={`0 0 ${viewBoxWidth} 400`} className="w-full h-[350px]">
-        {/* Arrow Marker Definition */}
+      <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-[400px]">
+        {/* Arrow Marker Definitions */}
         <defs>
-          <marker id={`arrowhead-${containerId}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <marker id={`arrowhead-normal-${containerId}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
+          </marker>
+          <marker id={`arrowhead-error-${containerId}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
+          </marker>
+          <marker id={`arrowhead-retry-${containerId}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b" />
           </marker>
         </defs>
         
-        {/* Connection Lines */}
-        {steps.map((step: WorkflowStep, index: number) => {
-          if (index === steps.length - 1) return null;
-          const x1 = startX + (index * stepGap) + stepWidth;
-          const x2 = startX + ((index + 1) * stepGap);
-          return (
-            <line 
-              key={`line-${index}`}
-              x1={x1} 
-              y1="80" 
-              x2={x2} 
-              y2="80" 
-              stroke="#059669" 
-              strokeWidth="3" 
-              markerEnd={`url(#arrowhead-${containerId})`} 
-            />
-          );
-        })}
+        {/* Render Paths First (Behind Nodes) */}
+        {paths.map((path, index) => renderPath(path, index))}
         
-        {/* START Node */}
-        <circle cx="50" cy="80" r="30" fill="#059669" stroke="#047857" strokeWidth="3" />
-        <text x="50" y="86" textAnchor="middle" className="fill-white text-sm font-bold">START</text>
-        
-        {/* Dynamic Steps */}
-        {steps.map((step: WorkflowStep, index: number) => {
-          const x = startX + (index * stepGap);
-          const y = 50;
-          const colors = getStepColor(step.type);
-          const icon = getStepIcon(step.type);
-          
-          return (
-            <g key={step.id}>
-              {/* Step Rectangle */}
-              <rect 
-                x={x} 
-                y={y} 
-                width={stepWidth} 
-                height={stepHeight} 
-                rx="8" 
-                fill={colors.bg} 
-                stroke={colors.border} 
-                strokeWidth="2" 
-              />
-              
-              {/* Icon Background */}
-              <rect 
-                x={x + 10} 
-                y={y + 5} 
-                width="20" 
-                height="20" 
-                rx="3" 
-                fill="rgba(255,255,255,0.2)" 
-              />
-              
-              {/* Icon */}
-              <text 
-                x={x + 20} 
-                y={y + 18} 
-                textAnchor="middle" 
-                className="fill-white text-xs"
-              >
-                {icon}
-              </text>
-              
-              {/* Step Name */}
-              <text 
-                x={x + stepWidth/2} 
-                y={y + 25} 
-                textAnchor="middle" 
-                className="fill-white text-sm font-medium"
-              >
-                {step.name.length > 15 ? step.name.substring(0, 15) + '...' : step.name}
-              </text>
-              
-              {/* Step Description */}
-              {step.description && (
-                <text 
-                  x={x + stepWidth/2} 
-                  y={y + 40} 
-                  textAnchor="middle" 
-                  className="fill-white text-xs"
-                >
-                  {step.description.length > 20 ? step.description.substring(0, 20) + '...' : step.description}
-                </text>
-              )}
-            </g>
-          );
-        })}
-        
-        {/* FINISH Node */}
-        <circle 
-          cx={startX + (steps.length * stepGap) + 50} 
-          cy="80" 
-          r="30" 
-          fill="#059669" 
-          stroke="#047857" 
-          strokeWidth="3" 
-        />
-        <text 
-          x={startX + (steps.length * stepGap) + 50} 
-          y="86" 
-          textAnchor="middle" 
-          className="fill-white text-sm font-bold"
-        >
-          FINISH
-        </text>
-        
-        {/* Connection from last step to FINISH */}
-        {steps.length > 0 && (
-          <line 
-            x1={startX + ((steps.length - 1) * stepGap) + stepWidth} 
-            y1="80" 
-            x2={startX + (steps.length * stepGap) + 20} 
-            y2="80" 
-            stroke="#059669" 
-            strokeWidth="3" 
-            markerEnd={`url(#arrowhead-${containerId})`} 
-          />
-        )}
+        {/* Render Nodes */}
+        {steps.map(step => renderNode(step))}
       </svg>
     </div>
   );
@@ -311,87 +507,230 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     };
   };
 
-  const extractWorkflowSteps = () => {
+  const analyzeWorkflowComplexity = () => {
     const workflowData = parseWorkflowData();
     
-    // Try to extract steps from different sources
-    let steps = [];
+    // Analyze workflow text for complex patterns
+    const fullText = [
+      workflowData.description,
+      workflowData.visualFlow,
+      workflowData.workflowJson,
+      container.description,
+      container.fullInstructions
+    ].filter(Boolean).join(' ').toLowerCase();
     
-    if (workflowData.workflowJson) {
-      // Parse Workflow_JSON if available
-      try {
-        const jsonWorkflow = JSON.parse(workflowData.workflowJson);
-        if (jsonWorkflow.steps || jsonWorkflow.actions) {
-          steps = jsonWorkflow.steps || jsonWorkflow.actions;
-        }
-      } catch (error) {
-        console.log('Could not parse workflow JSON');
-      }
-    }
+    // Identify workflow patterns
+    const hasDecisionLogic = /\b(if|when|condition|branch|decide|choose|check if|validate|verify)\b/.test(fullText);
+    const hasErrorHandling = /\b(error|fail|exception|retry|fallback|catch|timeout|abort)\b/.test(fullText);
+    const hasManualSteps = /\b(manual|review|approve|human|inspect|verify manually|confirm)\b/.test(fullText);
+    const hasIntegrations = /\b(api|webhook|database|email|notification|external|integration|connect|sync)\b/.test(fullText);
+    const hasParallelProcessing = /\b(parallel|concurrent|simultaneously|async|split|fork|merge)\b/.test(fullText);
     
-    if (steps.length === 0 && workflowData.visualFlow) {
-      // Extract steps from Visual_Flowchart text
-      const flowText = workflowData.visualFlow;
-      const lines = flowText.split('\n').filter((line: string) => line.trim());
+    // Create complex workflow structure
+    let steps: WorkflowStep[] = [];
+    let paths: WorkflowPath[] = [];
+    
+    // Start with trigger
+    steps.push({
+      id: 1,
+      name: 'Trigger',
+      description: detectTriggerType(fullText),
+      type: 'trigger',
+      x: 50,
+      y: 100
+    });
+    
+    let currentId = 2;
+    let currentX = 200;
+    let currentY = 100;
+    
+    // Add data collection/input step
+    steps.push({
+      id: currentId,
+      name: 'Collect Data',
+      description: 'Gather and process input data',
+      type: 'data',
+      x: currentX,
+      y: currentY
+    });
+    paths.push({ from: 1, to: currentId });
+    currentId++;
+    currentX += 150;
+    
+    // Add validation/decision step if detected
+    if (hasDecisionLogic) {
+      steps.push({
+        id: currentId,
+        name: 'Validate Input',
+        description: 'Check data validity and business rules',
+        type: 'validation',
+        isDecision: true,
+        x: currentX,
+        y: currentY
+      });
+      paths.push({ from: currentId - 1, to: currentId });
       
-      steps = lines
-        .filter((line: string) => 
-          line.includes('→') || 
-          line.includes('->') || 
-          line.match(/^\d+\./) ||
-          line.includes('Step') ||
-          line.includes(':')
-        )
-        .map((line: string, index: number) => ({
-          id: index + 1,
-          name: line.replace(/^\d+\.|\→|\-\>/g, '').trim().split(':')[0].trim(),
-          description: line.includes(':') ? line.split(':')[1]?.trim() : '',
-          type: getStepType(line)
-        }))
-        .slice(0, 8); // Limit to 8 steps for visual clarity
-    }
-    
-    if (steps.length === 0) {
-      // Extract steps from description text
-      const description = workflowData.description || container.description || '';
-      const sentences = description.split(/[.!?]/).filter((s: string) => s.trim().length > 10);
+      // Add success path
+      const successId = currentId + 1;
+      steps.push({
+        id: successId,
+        name: 'Process Valid Data',
+        description: 'Handle approved data',
+        type: 'process',
+        x: currentX + 150,
+        y: currentY
+      });
+      paths.push({ from: currentId, to: successId, condition: 'Valid' });
       
-      steps = sentences.slice(0, 6).map((sentence: string, index: number) => ({
-        id: index + 1,
-        name: sentence.trim().substring(0, 30) + (sentence.length > 30 ? '...' : ''),
-        description: sentence.trim(),
-        type: getStepType(sentence)
-      }));
-    }
-    
-    // Fallback to generic steps based on title/type
-    if (steps.length === 0) {
-      const title = workflowData.title.toLowerCase();
-      if (title.includes('email') || title.includes('marketing')) {
-        steps = [
-          { id: 1, name: 'Trigger Event', description: 'Workflow activation', type: 'trigger' },
-          { id: 2, name: 'Collect Data', description: 'Gather information', type: 'data' },
-          { id: 3, name: 'Send Email', description: 'Marketing campaign', type: 'action' },
-          { id: 4, name: 'Complete', description: 'Workflow finished', type: 'complete' }
-        ];
-      } else if (title.includes('customer') || title.includes('user')) {
-        steps = [
-          { id: 1, name: 'Customer Event', description: 'User interaction', type: 'trigger' },
-          { id: 2, name: 'Validate Data', description: 'Check information', type: 'validation' },
-          { id: 3, name: 'Update Records', description: 'Save to database', type: 'data' },
-          { id: 4, name: 'Send Notification', description: 'Alert stakeholders', type: 'action' }
-        ];
+      // Add error handling path if detected
+      if (hasErrorHandling) {
+        const errorId = currentId + 2;
+        steps.push({
+          id: errorId,
+          name: 'Handle Invalid Data',
+          description: 'Process validation failures',
+          type: 'error',
+          errorHandling: true,
+          x: currentX + 150,
+          y: currentY + 100
+        });
+        paths.push({ from: currentId, to: errorId, condition: 'Invalid', isError: true });
+        
+        // Add retry path
+        paths.push({ from: errorId, to: currentId, isRetry: true });
+        
+        currentId = errorId + 1;
+        currentX += 300;
       } else {
-        steps = [
-          { id: 1, name: 'Start Process', description: 'Initialize workflow', type: 'trigger' },
-          { id: 2, name: 'Process Data', description: 'Handle information', type: 'data' },
-          { id: 3, name: 'Execute Action', description: 'Perform main task', type: 'action' },
-          { id: 4, name: 'Finish', description: 'Complete workflow', type: 'complete' }
-        ];
+        currentId = successId + 1;
+        currentX += 300;
       }
     }
     
-    return steps;
+    // Add manual review step if detected
+    if (hasManualSteps) {
+      steps.push({
+        id: currentId,
+        name: 'Manual Review',
+        description: 'Human approval required',
+        type: 'review',
+        isManual: true,
+        x: currentX,
+        y: currentY
+      });
+      paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
+      currentId++;
+      currentX += 150;
+    }
+    
+    // Add integration steps if detected
+    if (hasIntegrations) {
+      const integrationSteps = detectIntegrationTypes(fullText);
+      integrationSteps.forEach((integration, index) => {
+        steps.push({
+          id: currentId,
+          name: integration.name,
+          description: integration.description,
+          type: integration.type,
+          isIntegration: true,
+          x: currentX,
+          y: hasParallelProcessing && index > 0 ? currentY + (index * 80) : currentY
+        });
+        paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
+        currentId++;
+        if (!hasParallelProcessing) currentX += 150;
+      });
+      
+      if (hasParallelProcessing && integrationSteps.length > 1) {
+        // Add merge point after parallel processing
+        steps.push({
+          id: currentId,
+          name: 'Merge Results',
+          description: 'Combine parallel outputs',
+          type: 'process',
+          x: currentX + 150,
+          y: currentY
+        });
+        // Connect all parallel steps to merge point
+        integrationSteps.forEach((_, index) => {
+          const stepId = currentId - integrationSteps.length + index;
+          paths.push({ from: stepId, to: currentId });
+        });
+        currentId++;
+        currentX += 300;
+      } else if (!hasParallelProcessing) {
+        currentX += 150;
+      }
+    }
+    
+    // Add completion step
+    steps.push({
+      id: currentId,
+      name: 'Complete',
+      description: 'Workflow finished successfully',
+      type: 'complete',
+      x: currentX,
+      y: currentY
+    });
+    paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
+    
+    return { steps, paths };
+  };
+  
+  const detectTriggerType = (text: string): string => {
+    if (text.includes('webhook')) return 'Webhook event received';
+    if (text.includes('schedule') || text.includes('cron')) return 'Scheduled execution';
+    if (text.includes('email')) return 'Email trigger activated';
+    if (text.includes('form') || text.includes('submit')) return 'Form submission detected';
+    if (text.includes('customer') || text.includes('user')) return 'User action initiated';
+    return 'Event trigger activated';
+  };
+  
+  const detectIntegrationTypes = (text: string) => {
+    const integrations = [];
+    
+    if (text.includes('email') || text.includes('send')) {
+      integrations.push({
+        name: 'Send Email',
+        description: 'Email service integration',
+        type: 'action'
+      });
+    }
+    
+    if (text.includes('database') || text.includes('save') || text.includes('store')) {
+      integrations.push({
+        name: 'Update Database',
+        description: 'Database operation',
+        type: 'data'
+      });
+    }
+    
+    if (text.includes('api') || text.includes('webhook') || text.includes('external')) {
+      integrations.push({
+        name: 'API Integration',
+        description: 'External service call',
+        type: 'integration'
+      });
+    }
+    
+    if (text.includes('notification') || text.includes('alert')) {
+      integrations.push({
+        name: 'Send Notification',
+        description: 'Alert stakeholders',
+        type: 'action'
+      });
+    }
+    
+    // Default integration if none detected
+    if (integrations.length === 0) {
+      integrations.push({
+        name: 'Execute Action',
+        description: 'Primary workflow action',
+        type: 'action'
+      });
+    }
+    
+    return integrations.slice(0, 3); // Limit to 3 integrations for visual clarity
   };
 
   const getStepType = (text: string) => {
@@ -754,7 +1093,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                 
                 {/* Dynamic Workflow Canvas */}
                 <DynamicWorkflowCanvas 
-                  steps={extractWorkflowSteps()} 
+                  workflowData={analyzeWorkflowComplexity()} 
                   containerId={container.id}
                 />
                 
