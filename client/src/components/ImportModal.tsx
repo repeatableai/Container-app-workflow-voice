@@ -100,8 +100,46 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               efficiencyImprovements: obj.Efficiency_Improvements || obj.efficiency_improvements || ''
             };
           }).filter(Boolean);
+        } else if (activeTab === 'workflow') {
+          // Enhanced workflow processing from JSONL - preserve all rich data
+          console.log(`Processing ${parsedObjects.length} workflows from JSONL`);
+          
+          containersData = parsedObjects.map((obj, index) => {
+            // Extract workflow-specific fields
+            const promptName = obj.Prompt_Name || obj.prompt_name || obj.title || obj.name || 'Automation Workflow';
+            const whatItDoes = obj.What_it_does || obj.what_it_does || obj.description || '';
+            const whyItMatters = obj.Why_It_matters || obj.why_it_matters || '';
+            const timeComparison = obj['Avg._time_spent_manual_vs_automatic'] || obj.time_comparison || '';
+            const visualFlowchart = obj.Visual_Flowchart || obj.visual_flowchart || '';
+            const workflowJson = obj.Workflow_JSON || obj.workflow_json || '';
+            const industry = obj.Industry || obj.industry || 'Business';
+            const department = obj.Department || obj.department || '';
+            
+            // Store complete JSONL object as fullInstructions for copy/paste
+            const fullInstructions = JSON.stringify(obj, null, 2);
+            
+            console.log(`Creating workflow "${promptName}" from JSONL with rich data`);
+            
+            return {
+              title: promptName,
+              description: whatItDoes.substring(0, 500) + (whatItDoes.length > 500 ? '...' : ''),
+              fullInstructions: fullInstructions, // Complete JSONL object for copy/paste
+              type: activeTab,
+              industry: industry,
+              department: department,
+              visibility: 'public',
+              tags: [industry, department, 'imported', 'jsonl', 'automation'].filter(Boolean),
+              url: '', // Workflows don't typically have URLs from JSONL
+              isMarketplace: true,
+              // Store additional workflow metadata for rich display
+              whyItMatters: whyItMatters,
+              timeComparison: timeComparison,
+              visualFlowchart: visualFlowchart,
+              workflowJson: workflowJson
+            };
+          }).filter(Boolean);
         } else {
-          // For apps and workflows, use objects as-is with some mapping
+          // For apps, use basic mapping with enhanced JSONL support
           containersData = parsedObjects.map(obj => ({
             title: obj.title || obj.name || 'Imported Container',
             description: obj.description || '',
@@ -109,8 +147,9 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             industry: obj.industry || '',
             department: obj.department || '',
             visibility: obj.visibility || 'public',
-            tags: Array.isArray(obj.tags) ? obj.tags : [],
+            tags: Array.isArray(obj.tags) ? [...obj.tags, 'imported', 'jsonl'] : ['imported', 'jsonl'],
             isMarketplace: true,
+            fullInstructions: JSON.stringify(obj, null, 2), // Store complete object for copy/paste
             ...obj
           }));
         }
