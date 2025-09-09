@@ -475,66 +475,103 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                     </pre>
                   </div>
                 ) : (
-                  /* Generic Visual Flow */
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-4 mt-2 border border-green-200 dark:border-green-800">
-                    <div className="space-y-4 text-sm">
-                      {/* Start Node */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <Play className="w-4 h-4 text-white" />
+                  /* Professional Whiteboard-Style Visual Flow */
+                  <div className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg p-6 mt-2 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                    {/* Grid Background Pattern */}
+                    <div 
+                      className="absolute inset-0 opacity-20" 
+                      style={{
+                        backgroundImage: `
+                          linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+                        `,
+                        backgroundSize: '20px 20px'
+                      }}
+                    />
+                    
+                    {/* Workflow Canvas */}
+                    <div className="relative z-10">
+                      <svg viewBox="0 0 800 400" className="w-full h-64">
+                        {/* Connection Lines */}
+                        <line x1="120" y1="80" x2="280" y2="80" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        <line x1="400" y1="80" x2="560" y2="80" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        <line x1="680" y1="80" x2="680" y2="160" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        <line x1="680" y1="240" x2="560" y2="240" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        <line x1="440" y1="240" x2="280" y2="240" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        <line x1="160" y1="240" x2="160" y2="320" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
+                        
+                        {/* Arrow Marker Definition */}
+                        <defs>
+                          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+                          </marker>
+                        </defs>
+                        
+                        {/* Start Node */}
+                        <circle cx="80" cy="80" r="30" fill="#10b981" stroke="#059669" strokeWidth="2" />
+                        <text x="80" y="86" textAnchor="middle" className="fill-white text-sm font-medium">START</text>
+                        
+                        {/* Database Integration */}
+                        <rect x="240" y="50" width="100" height="60" rx="8" fill="#3b82f6" stroke="#2563eb" strokeWidth="2" />
+                        <text x="290" y="75" textAnchor="middle" className="fill-white text-xs font-medium">Database</text>
+                        <text x="290" y="90" textAnchor="middle" className="fill-white text-xs">Setup Data</text>
+                        
+                        {/* Webhook Integration */}
+                        <rect x="520" y="50" width="100" height="60" rx="8" fill="#10b981" stroke="#059669" strokeWidth="2" />
+                        <text x="570" y="75" textAnchor="middle" className="fill-white text-xs font-medium">Webhook</text>
+                        <text x="570" y="90" textAnchor="middle" className="fill-white text-xs">Trigger Event</text>
+                        
+                        {/* Data Processing */}
+                        <rect x="640" y="160" width="100" height="60" rx="8" fill="#f59e0b" stroke="#d97706" strokeWidth="2" />
+                        <text x="690" y="185" textAnchor="middle" className="fill-white text-xs font-medium">Process</text>
+                        <text x="690" y="200" textAnchor="middle" className="fill-white text-xs">Customer Data</text>
+                        
+                        {/* Validation Step */}
+                        <rect x="520" y="210" width="100" height="60" rx="8" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="2" />
+                        <text x="570" y="235" textAnchor="middle" className="fill-white text-xs font-medium">Validate</text>
+                        <text x="570" y="250" textAnchor="middle" className="fill-white text-xs">Information</text>
+                        
+                        {/* Manual Review */}
+                        <rect x="240" y="210" width="100" height="60" rx="8" fill="#ef4444" stroke="#dc2626" strokeWidth="2" />
+                        <text x="290" y="235" textAnchor="middle" className="fill-white text-xs font-medium">Manual</text>
+                        <text x="290" y="250" textAnchor="middle" className="fill-white text-xs">Review</text>
+                        
+                        {/* Complete Node */}
+                        <circle cx="160" cy="340" r="30" fill="#059669" stroke="#047857" strokeWidth="2" />
+                        <text x="160" y="346" textAnchor="middle" className="fill-white text-sm font-medium">DONE</text>
+                      </svg>
+                      
+                      {/* Integration Legend */}
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                          <span className="text-muted-foreground">Database Integration</span>
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-green-800 dark:text-green-200">Start Workflow</div>
-                          <div className="text-xs text-muted-foreground">Initialize process</div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded"></div>
+                          <span className="text-muted-foreground">Webhook/API</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                          <span className="text-muted-foreground">Data Processing</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                          <span className="text-muted-foreground">Validation/Logic</span>
                         </div>
                       </div>
                       
-                      {/* Arrow */}
-                      <div className="flex justify-center">
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      
-                      {/* Process Node */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <Settings className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-blue-800 dark:text-blue-200">Process Data</div>
-                          <div className="text-xs text-muted-foreground">{parseWorkflowData().description || 'Execute workflow logic'}</div>
-                        </div>
-                      </div>
-                      
-                      {/* Arrow */}
-                      <div className="flex justify-center">
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      
-                      {/* Decision Node */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                          <MessageSquare className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-yellow-800 dark:text-yellow-200">Validation</div>
-                          <div className="text-xs text-muted-foreground">Verify results and conditions</div>
-                        </div>
-                      </div>
-                      
-                      {/* Arrow */}
-                      <div className="flex justify-center">
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      
-                      {/* End Node */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-green-800 dark:text-green-200">Complete</div>
-                          <div className="text-xs text-muted-foreground">Workflow finished successfully</div>
-                        </div>
+                      {/* Workflow Steps Summary */}
+                      <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded border">
+                        <h4 className="text-sm font-medium mb-2">Workflow Steps:</h4>
+                        <ol className="text-xs text-muted-foreground space-y-1">
+                          <li>1. Initialize workflow and setup database connection</li>
+                          <li>2. Trigger webhook event and capture customer data</li>
+                          <li>3. Process and transform the captured information</li>
+                          <li>4. Validate data against business rules</li>
+                          <li>5. Manual review for exceptions or edge cases</li>
+                          <li>6. Complete workflow and store final results</li>
+                        </ol>
                       </div>
                     </div>
                   </div>
