@@ -170,12 +170,11 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
           <Button 
             size="sm" 
             className="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600"
-            onClick={handleInstall}
-            disabled={isInstalling}
-            data-testid="install-button"
+            onClick={handleViewApp}
+            data-testid="preview-button"
           >
-            <Download className="w-4 h-4 mr-2" />
-            {isInstalling ? 'Installing...' : 'Install'}
+            <Monitor className="w-4 h-4 mr-2" />
+            Preview
           </Button>
           {canEdit && (
             <Button 
@@ -192,19 +191,12 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
               variant="outline" 
               size="sm"
               onClick={() => container.url && window.open(container.url, '_blank')}
-              data-testid="view-details-button"
+              data-testid="new-tab-button"
+              title="Open in New Tab"
             >
               <ExternalLink className="w-4 h-4" />
             </Button>
           )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleViewApp}
-            data-testid="preview-button"
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
         </div>
 
         {/* Industry/Department Info */}
