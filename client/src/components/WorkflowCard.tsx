@@ -598,375 +598,287 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     return { steps, paths };
   };
   
-  const generateIndustrySpecificWorkflow = (container: Container, fullText: string) => {
-    const industry = container.industry?.toLowerCase() || '';
-    const department = container.department?.toLowerCase() || '';
-    const title = container.title.toLowerCase();
-    
-    // Create workflow based on industry patterns
-    if (industry.includes('finance') || industry.includes('banking')) {
-      return createFinanceWorkflow(title, fullText);
-    } else if (industry.includes('healthcare') || industry.includes('medical')) {
-      return createHealthcareWorkflow(title, fullText);
-    } else if (industry.includes('marketing') || industry.includes('advertising')) {
-      return createMarketingWorkflow(title, fullText);
-    } else if (industry.includes('sales') || department.includes('sales')) {
-      return createSalesWorkflow(title, fullText);
-    } else if (industry.includes('hr') || industry.includes('human') || department.includes('hr')) {
-      return createHRWorkflow(title, fullText);
-    } else if (industry.includes('legal') || department.includes('legal')) {
-      return createLegalWorkflow(title, fullText);
-    } else if (industry.includes('manufacturing') || industry.includes('production')) {
-      return createManufacturingWorkflow(title, fullText);
-    } else if (industry.includes('education') || industry.includes('learning')) {
-      return createEducationWorkflow(title, fullText);
-    } else if (title.includes('customer') || title.includes('support')) {
-      return createCustomerServiceWorkflow(title, fullText);
-    } else if (title.includes('report') || title.includes('analyt')) {
-      return createReportingWorkflow(title, fullText);
-    } else if (title.includes('content') || title.includes('blog') || title.includes('social')) {
-      return createContentWorkflow(title, fullText);
-    } else {
-      return createGenericBusinessWorkflow(title, fullText);
-    }
-  };
-  
-  const createFinanceWorkflow = (title: string, fullText: string) => {
+  const createUniversalWorkflow = (container: Container, fullText: string) => {
     const steps: WorkflowStep[] = [];
     const paths: WorkflowPath[] = [];
+    const text = fullText.toLowerCase();
     
-    if (title.includes('invoice') || title.includes('payment')) {
-      return createSteps([
-        { name: 'Receive Invoice', type: 'trigger' },
-        { name: 'Validate Details', type: 'validation', isDecision: true },
-        { name: 'Check Budget', type: 'data' },
-        { name: 'Manager Approval', type: 'review', isManual: true },
-        { name: 'Process Payment', type: 'action' },
-        { name: 'Update Records', type: 'data' },
-        { name: 'Send Confirmation', type: 'complete' }
-      ]);
-    } else if (title.includes('expense') || title.includes('reimburse')) {
-      return createSteps([
-        { name: 'Submit Expense', type: 'trigger' },
-        { name: 'Validate Receipts', type: 'validation' },
-        { name: 'Policy Check', type: 'validation', isDecision: true },
-        { name: 'Approval Workflow', type: 'review', isManual: true },
-        { name: 'Process Reimbursement', type: 'action' },
-        { name: 'Update Accounting', type: 'data' },
-        { name: 'Notify Employee', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Financial Trigger', type: 'trigger' },
-        { name: 'Gather Data', type: 'data' },
-        { name: 'Risk Assessment', type: 'validation' },
-        { name: 'Compliance Check', type: 'validation', isDecision: true },
-        { name: 'Execute Transaction', type: 'action' },
-        { name: 'Audit Trail', type: 'data' },
-        { name: 'Generate Report', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createHealthcareWorkflow = (title: string, fullText: string) => {
-    if (title.includes('patient') || title.includes('admission')) {
-      return createSteps([
-        { name: 'Patient Arrival', type: 'trigger' },
-        { name: 'Check Insurance', type: 'validation' },
-        { name: 'Medical History', type: 'data' },
-        { name: 'Doctor Assessment', type: 'review', isManual: true },
-        { name: 'Treatment Plan', type: 'action' },
-        { name: 'Update Records', type: 'data' },
-        { name: 'Discharge Process', type: 'complete' }
-      ]);
-    } else if (title.includes('prescription') || title.includes('medication')) {
-      return createSteps([
-        { name: 'Prescription Request', type: 'trigger' },
-        { name: 'Verify Dosage', type: 'validation' },
-        { name: 'Drug Interactions', type: 'validation', isDecision: true },
-        { name: 'Pharmacist Review', type: 'review', isManual: true },
-        { name: 'Dispense Medication', type: 'action' },
-        { name: 'Patient Instructions', type: 'action' },
-        { name: 'Record Dispensing', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Health Event', type: 'trigger' },
-        { name: 'Triage Assessment', type: 'validation' },
-        { name: 'Priority Classification', type: 'validation', isDecision: true },
-        { name: 'Clinical Review', type: 'review', isManual: true },
-        { name: 'Care Delivery', type: 'action' },
-        { name: 'Outcome Tracking', type: 'data' },
-        { name: 'Quality Assurance', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createMarketingWorkflow = (title: string, fullText: string) => {
-    if (title.includes('campaign') || title.includes('ad')) {
-      return createSteps([
-        { name: 'Campaign Brief', type: 'trigger' },
-        { name: 'Target Audience', type: 'data' },
-        { name: 'Content Creation', type: 'action' },
-        { name: 'Creative Review', type: 'review', isManual: true },
-        { name: 'Deploy Campaign', type: 'action' },
-        { name: 'Monitor Performance', type: 'data' },
-        { name: 'Analyze Results', type: 'complete' }
-      ]);
-    } else if (title.includes('lead') || title.includes('prospect')) {
-      return createSteps([
-        { name: 'Lead Capture', type: 'trigger' },
-        { name: 'Lead Scoring', type: 'validation' },
-        { name: 'Qualification Check', type: 'validation', isDecision: true },
-        { name: 'Sales Handoff', type: 'action' },
-        { name: 'Follow-up Sequence', type: 'action' },
-        { name: 'Track Conversion', type: 'data' },
-        { name: 'Update CRM', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Marketing Request', type: 'trigger' },
-        { name: 'Strategy Planning', type: 'data' },
-        { name: 'Asset Development', type: 'action' },
-        { name: 'Stakeholder Approval', type: 'review', isManual: true },
-        { name: 'Market Launch', type: 'action' },
-        { name: 'Performance Tracking', type: 'data' },
-        { name: 'ROI Analysis', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createSalesWorkflow = (title: string, fullText: string) => {
-    if (title.includes('opportunity') || title.includes('deal')) {
-      return createSteps([
-        { name: 'New Opportunity', type: 'trigger' },
-        { name: 'Qualify Prospect', type: 'validation' },
-        { name: 'Needs Analysis', type: 'data' },
-        { name: 'Proposal Creation', type: 'action' },
-        { name: 'Negotiation', type: 'action', isManual: true },
-        { name: 'Contract Review', type: 'review' },
-        { name: 'Close Deal', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Sales Inquiry', type: 'trigger' },
-        { name: 'Lead Qualification', type: 'validation', isDecision: true },
-        { name: 'Product Demo', type: 'action' },
-        { name: 'Follow-up Sequence', type: 'action' },
-        { name: 'Proposal Delivery', type: 'action' },
-        { name: 'Decision Timeline', type: 'data' },
-        { name: 'Outcome Recording', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createHRWorkflow = (title: string, fullText: string) => {
-    if (title.includes('hiring') || title.includes('recruit')) {
-      return createSteps([
-        { name: 'Job Posting', type: 'trigger' },
-        { name: 'Resume Screening', type: 'validation' },
-        { name: 'Phone Interview', type: 'action' },
-        { name: 'Technical Assessment', type: 'validation' },
-        { name: 'Final Interview', type: 'review', isManual: true },
-        { name: 'Reference Check', type: 'validation' },
-        { name: 'Offer Decision', type: 'complete' }
-      ]);
-    } else if (title.includes('onboard') || title.includes('orientation')) {
-      return createSteps([
-        { name: 'New Hire Start', type: 'trigger' },
-        { name: 'Documentation', type: 'data' },
-        { name: 'IT Setup', type: 'action' },
-        { name: 'Training Schedule', type: 'action' },
-        { name: 'Manager Meeting', type: 'review', isManual: true },
-        { name: 'Progress Check', type: 'validation' },
-        { name: 'Onboarding Complete', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'HR Request', type: 'trigger' },
-        { name: 'Policy Check', type: 'validation' },
-        { name: 'Employee Record', type: 'data' },
-        { name: 'Manager Review', type: 'review', isManual: true },
-        { name: 'Action Required', type: 'action' },
-        { name: 'Documentation', type: 'data' },
-        { name: 'Case Closure', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createLegalWorkflow = (title: string, fullText: string) => {
-    return createSteps([
-      { name: 'Legal Request', type: 'trigger' },
-      { name: 'Risk Assessment', type: 'validation' },
-      { name: 'Research Required', type: 'data' },
-      { name: 'Legal Review', type: 'review', isManual: true },
-      { name: 'Documentation', type: 'action' },
-      { name: 'Approval Process', type: 'validation', isDecision: true },
-      { name: 'Final Disposition', type: 'complete' }
-    ]);
-  };
-  
-  const createManufacturingWorkflow = (title: string, fullText: string) => {
-    if (title.includes('production') || title.includes('assembly')) {
-      return createSteps([
-        { name: 'Production Order', type: 'trigger' },
-        { name: 'Material Check', type: 'validation' },
-        { name: 'Quality Control', type: 'validation' },
-        { name: 'Assembly Process', type: 'action' },
-        { name: 'Inspection', type: 'review' },
-        { name: 'Packaging', type: 'action' },
-        { name: 'Shipping Ready', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Manufacturing Event', type: 'trigger' },
-        { name: 'Resource Planning', type: 'data' },
-        { name: 'Process Execution', type: 'action' },
-        { name: 'Quality Assurance', type: 'validation' },
-        { name: 'Output Verification', type: 'review' },
-        { name: 'Inventory Update', type: 'data' },
-        { name: 'Process Complete', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createEducationWorkflow = (title: string, fullText: string) => {
-    if (title.includes('grade') || title.includes('assessment')) {
-      return createSteps([
-        { name: 'Assignment Submitted', type: 'trigger' },
-        { name: 'Plagiarism Check', type: 'validation' },
-        { name: 'Initial Review', type: 'review' },
-        { name: 'Grade Assignment', type: 'action', isManual: true },
-        { name: 'Feedback Creation', type: 'action' },
-        { name: 'Grade Recording', type: 'data' },
-        { name: 'Student Notification', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Learning Event', type: 'trigger' },
-        { name: 'Content Delivery', type: 'action' },
-        { name: 'Student Engagement', type: 'data' },
-        { name: 'Progress Assessment', type: 'validation' },
-        { name: 'Feedback Collection', type: 'review' },
-        { name: 'Improvement Planning', type: 'action' },
-        { name: 'Learning Complete', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createCustomerServiceWorkflow = (title: string, fullText: string) => {
-    return createSteps([
-      { name: 'Customer Inquiry', type: 'trigger' },
-      { name: 'Issue Classification', type: 'validation' },
-      { name: 'Priority Assessment', type: 'validation', isDecision: true },
-      { name: 'Agent Assignment', type: 'action' },
-      { name: 'Issue Resolution', type: 'action', isManual: true },
-      { name: 'Customer Confirmation', type: 'validation' },
-      { name: 'Case Closure', type: 'complete' }
-    ]);
-  };
-  
-  const createReportingWorkflow = (title: string, fullText: string) => {
-    return createSteps([
-      { name: 'Data Request', type: 'trigger' },
-      { name: 'Data Collection', type: 'data' },
-      { name: 'Data Validation', type: 'validation' },
-      { name: 'Analysis Process', type: 'action' },
-      { name: 'Report Generation', type: 'action' },
-      { name: 'Quality Review', type: 'review', isManual: true },
-      { name: 'Report Distribution', type: 'complete' }
-    ]);
-  };
-  
-  const createContentWorkflow = (title: string, fullText: string) => {
-    if (title.includes('blog') || title.includes('article')) {
-      return createSteps([
-        { name: 'Content Brief', type: 'trigger' },
-        { name: 'Research Phase', type: 'data' },
-        { name: 'Writing Process', type: 'action' },
-        { name: 'Editorial Review', type: 'review', isManual: true },
-        { name: 'SEO Optimization', type: 'action' },
-        { name: 'Publication', type: 'action' },
-        { name: 'Performance Tracking', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Content Request', type: 'trigger' },
-        { name: 'Creative Planning', type: 'data' },
-        { name: 'Asset Creation', type: 'action' },
-        { name: 'Brand Review', type: 'review', isManual: true },
-        { name: 'Multi-Channel Distribution', type: 'action' },
-        { name: 'Engagement Monitoring', type: 'data' },
-        { name: 'Performance Analysis', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createGenericBusinessWorkflow = (title: string, fullText: string) => {
-    const hasApproval = fullText.toLowerCase().includes('approval') || fullText.toLowerCase().includes('approve');
-    const hasReview = fullText.toLowerCase().includes('review') || fullText.toLowerCase().includes('check');
-    const hasNotification = fullText.toLowerCase().includes('notify') || fullText.toLowerCase().includes('alert');
+    // Analyze workflow patterns (similar to original approach but more nuanced)
+    const hasDecisionLogic = /\b(if|when|condition|branch|decide|choose|check if|validate|verify|approve|review)\b/.test(text);
+    const hasErrorHandling = /\b(error|fail|exception|retry|fallback|catch|timeout|abort)\b/.test(text);
+    const hasManualSteps = /\b(manual|review|approve|human|inspect|verify manually|confirm)\b/.test(text);
+    const hasIntegrations = /\b(api|webhook|database|email|notification|external|integration|connect|sync|send|update)\b/.test(text);
+    const hasParallelProcessing = /\b(parallel|concurrent|simultaneously|async|split|fork|merge)\b/.test(text);
     
-    if (hasApproval) {
-      return createSteps([
-        { name: 'Request Initiated', type: 'trigger' },
-        { name: 'Initial Validation', type: 'validation' },
-        { name: 'Documentation Review', type: 'review' },
-        { name: 'Approval Decision', type: 'review', isManual: true, isDecision: true },
-        { name: 'Process Execution', type: 'action' },
-        { name: 'Status Update', type: 'data' },
-        { name: 'Completion Notice', type: 'complete' }
-      ]);
-    } else if (hasReview) {
-      return createSteps([
-        { name: 'Review Request', type: 'trigger' },
-        { name: 'Gather Materials', type: 'data' },
-        { name: 'Analysis Process', type: 'action' },
-        { name: 'Expert Review', type: 'review', isManual: true },
-        { name: 'Recommendations', type: 'action' },
-        { name: 'Report Generation', type: 'data' },
-        { name: 'Review Complete', type: 'complete' }
-      ]);
-    } else {
-      return createSteps([
-        { name: 'Process Start', type: 'trigger' },
-        { name: 'Data Processing', type: 'data' },
-        { name: 'Business Logic', type: 'action' },
-        { name: 'Validation Check', type: 'validation' },
-        { name: 'Output Generation', type: 'action' },
-        { name: 'Quality Assurance', type: 'review' },
-        { name: 'Process Complete', type: 'complete' }
-      ]);
-    }
-  };
-  
-  const createSteps = (stepDefinitions: Array<{name: string, type: string, isDecision?: boolean, isManual?: boolean}>) => {
-    const steps: WorkflowStep[] = [];
-    const paths: WorkflowPath[] = [];
+    let currentId = 1;
     
-    stepDefinitions.forEach((def, index) => {
-      const { x, y } = calculateStepPosition(index, stepDefinitions.length);
-      
+    // Start with intelligent trigger detection
+    steps.push({
+      id: currentId++,
+      name: detectIntelligentTrigger(text, container.title),
+      description: detectTriggerType(text),
+      type: 'trigger',
+      x: 50,
+      y: 100
+    });
+    
+    // Add data/input step with contextual naming
+    const dataStepName = detectDataStepName(text, container.title);
+    steps.push({
+      id: currentId++,
+      name: dataStepName,
+      description: 'Gather and process input data',
+      type: 'data',
+      x: 200,
+      y: 100
+    });
+    paths.push({ from: 1, to: 2 });
+    
+    let currentX = 350;
+    let currentY = 100;
+    
+    // Add validation/decision step if detected (with intelligent naming)
+    if (hasDecisionLogic) {
+      const validationName = detectValidationStepName(text, container.title);
       steps.push({
-        id: index + 1,
-        name: def.name,
-        description: def.name,
-        type: def.type,
-        isDecision: def.isDecision || false,
-        isManual: def.isManual || false,
-        isIntegration: def.type === 'integration',
-        errorHandling: def.type === 'error',
-        x,
-        y
+        id: currentId,
+        name: validationName,
+        description: 'Validation and decision logic',
+        type: 'validation',
+        isDecision: true,
+        x: currentX,
+        y: currentY
+      });
+      paths.push({ from: currentId - 1, to: currentId });
+      
+      // Add success path
+      const successId = currentId + 1;
+      const processName = detectProcessStepName(text, container.title);
+      steps.push({
+        id: successId,
+        name: processName,
+        description: 'Handle approved data',
+        type: 'action',
+        x: currentX + 150,
+        y: currentY
+      });
+      paths.push({ from: currentId, to: successId, condition: 'Valid' });
+      
+      // Add error handling path if detected
+      if (hasErrorHandling) {
+        const errorId = currentId + 2;
+        steps.push({
+          id: errorId,
+          name: 'Handle Issues',
+          description: 'Process validation failures',
+          type: 'error',
+          errorHandling: true,
+          x: currentX + 150,
+          y: currentY + 100
+        });
+        paths.push({ from: currentId, to: errorId, condition: 'Invalid', isError: true });
+        paths.push({ from: errorId, to: currentId, isRetry: true });
+        currentId = errorId + 1;
+        currentX += 300;
+      } else {
+        currentId = successId + 1;
+        currentX += 300;
+      }
+    }
+    
+    // Add manual review step if detected
+    if (hasManualSteps) {
+      const reviewName = detectReviewStepName(text, container.title);
+      steps.push({
+        id: currentId,
+        name: reviewName,
+        description: 'Human review required',
+        type: 'review',
+        isManual: true,
+        x: currentX,
+        y: currentY
+      });
+      paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
+      currentId++;
+      currentX += 150;
+    }
+    
+    // Add integration steps if detected (with intelligent naming)
+    if (hasIntegrations) {
+      const integrationSteps = detectIntelligentIntegrations(text, container.title);
+      integrationSteps.forEach((integration, index) => {
+        steps.push({
+          id: currentId,
+          name: integration.name,
+          description: integration.description,
+          type: integration.type,
+          isIntegration: true,
+          x: currentX,
+          y: hasParallelProcessing && index > 0 ? currentY + (index * 80) : currentY
+        });
+        paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
+        currentId++;
+        if (!hasParallelProcessing) currentX += 150;
       });
       
-      if (index > 0) {
-        paths.push({ from: index, to: index + 1 });
+      if (hasParallelProcessing && integrationSteps.length > 1) {
+        steps.push({
+          id: currentId,
+          name: 'Merge Results',
+          description: 'Combine parallel outputs',
+          type: 'action',
+          x: currentX + 150,
+          y: currentY
+        });
+        integrationSteps.forEach((_, index) => {
+          const stepId = currentId - integrationSteps.length + index;
+          paths.push({ from: stepId, to: currentId });
+        });
+        currentId++;
+        currentX += 300;
+      } else if (!hasParallelProcessing) {
+        currentX += 150;
       }
+    }
+    
+    // Add completion step with intelligent naming
+    const completionName = detectCompletionStepName(text, container.title);
+    steps.push({
+      id: currentId,
+      name: completionName,
+      description: 'Workflow finished successfully',
+      type: 'complete',
+      x: currentX,
+      y: currentY
     });
+    paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
     
     return { steps, paths };
   };
+
+  const detectIntelligentTrigger = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Invoice Received';
+    if (titleLower.includes('customer') || titleLower.includes('support')) return 'Customer Request';
+    if (titleLower.includes('order') || titleLower.includes('purchase')) return 'Order Placed';
+    if (titleLower.includes('user') || titleLower.includes('signup')) return 'User Registration';
+    if (titleLower.includes('report') || titleLower.includes('analyt')) return 'Report Request';
+    if (titleLower.includes('content') || titleLower.includes('blog')) return 'Content Request';
+    if (titleLower.includes('lead') || titleLower.includes('prospect')) return 'Lead Generated';
+    if (titleLower.includes('hire') || titleLower.includes('recruit')) return 'Application Received';
+    if (text.includes('webhook')) return 'Webhook Triggered';
+    if (text.includes('schedule') || text.includes('cron')) return 'Scheduled Event';
+    if (text.includes('email')) return 'Email Received';
+    if (text.includes('form') || text.includes('submit')) return 'Form Submitted';
+    return 'Process Started';
+  };
+  
+  const detectDataStepName = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Extract Invoice Data';
+    if (titleLower.includes('customer')) return 'Gather Customer Info';
+    if (titleLower.includes('order')) return 'Collect Order Details';
+    if (titleLower.includes('user')) return 'Process User Data';
+    if (titleLower.includes('report')) return 'Collect Data Sources';
+    if (titleLower.includes('content')) return 'Gather Requirements';
+    if (titleLower.includes('lead')) return 'Capture Lead Info';
+    if (text.includes('database') || text.includes('record')) return 'Fetch Records';
+    if (text.includes('api') || text.includes('external')) return 'Retrieve External Data';
+    return 'Collect Input Data';
+  };
+  
+  const detectValidationStepName = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Validate Payment Info';
+    if (titleLower.includes('customer')) return 'Verify Customer Details';
+    if (titleLower.includes('order')) return 'Check Inventory';
+    if (titleLower.includes('user')) return 'Validate Registration';
+    if (titleLower.includes('content')) return 'Content Review';
+    if (titleLower.includes('lead')) return 'Qualify Lead';
+    if (text.includes('policy') || text.includes('compliance')) return 'Compliance Check';
+    if (text.includes('security') || text.includes('auth')) return 'Security Validation';
+    return 'Validate Input';
+  };
+  
+  const detectProcessStepName = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Process Payment';
+    if (titleLower.includes('customer')) return 'Handle Request';
+    if (titleLower.includes('order')) return 'Fulfill Order';
+    if (titleLower.includes('user')) return 'Create Account';
+    if (titleLower.includes('report')) return 'Generate Report';
+    if (titleLower.includes('content')) return 'Create Content';
+    if (titleLower.includes('lead')) return 'Convert Lead';
+    return 'Execute Process';
+  };
+  
+  const detectReviewStepName = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Manager Approval';
+    if (titleLower.includes('content')) return 'Editorial Review';
+    if (titleLower.includes('legal')) return 'Legal Review';
+    if (titleLower.includes('hire') || titleLower.includes('recruit')) return 'Interview Process';
+    if (text.includes('compliance') || text.includes('audit')) return 'Compliance Review';
+    return 'Manual Review';
+  };
+  
+  const detectCompletionStepName = (text: string, title: string) => {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Payment Complete';
+    if (titleLower.includes('customer')) return 'Issue Resolved';
+    if (titleLower.includes('order')) return 'Order Fulfilled';
+    if (titleLower.includes('user')) return 'Account Active';
+    if (titleLower.includes('report')) return 'Report Delivered';
+    if (titleLower.includes('content')) return 'Content Published';
+    if (titleLower.includes('lead')) return 'Lead Converted';
+    if (titleLower.includes('hire')) return 'Candidate Hired';
+    return 'Process Complete';
+  };
+  
+  const detectIntelligentIntegrations = (text: string, title: string) => {
+    const integrations: Array<{name: string, description: string, type: string}> = [];
+    const titleLower = title.toLowerCase();
+    
+    if (text.includes('email') || text.includes('send') || text.includes('notify')) {
+      const name = titleLower.includes('customer') ? 'Notify Customer' :
+                   titleLower.includes('user') ? 'Send Welcome Email' :
+                   titleLower.includes('order') ? 'Send Confirmation' :
+                   'Send Notification';
+      integrations.push({ name, description: 'Email notification', type: 'action' });
+    }
+    
+    if (text.includes('database') || text.includes('save') || text.includes('store') || text.includes('update')) {
+      const name = titleLower.includes('customer') ? 'Update Customer Record' :
+                   titleLower.includes('order') ? 'Save Order Data' :
+                   titleLower.includes('user') ? 'Store User Profile' :
+                   'Update Database';
+      integrations.push({ name, description: 'Database operation', type: 'data' });
+    }
+    
+    if (text.includes('api') || text.includes('webhook') || text.includes('external') || text.includes('integration')) {
+      const name = titleLower.includes('payment') ? 'Payment Gateway' :
+                   titleLower.includes('crm') ? 'Update CRM' :
+                   titleLower.includes('inventory') ? 'Check Inventory' :
+                   'External API Call';
+      integrations.push({ name, description: 'External service integration', type: 'integration' });
+    }
+    
+    if (integrations.length === 0) {
+      integrations.push({
+        name: 'Execute Action',
+        description: 'Primary workflow action',
+        type: 'action'
+      });
+    }
+    
+    return integrations.slice(0, 3);
+  };
+
+  const generateIndustrySpecificWorkflow = (container: Container, fullText: string) => {
+    // Use the universal workflow approach
+    return createUniversalWorkflow(container, fullText);
+  };
+  
   
   const determineStepType = (description: string, industry?: string) => {
     const desc = description.toLowerCase();
