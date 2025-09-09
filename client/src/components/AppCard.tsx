@@ -96,13 +96,13 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
   };
 
   return (
-    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-sky-50 to-indigo-50 dark:from-sky-950/20 dark:to-indigo-950/20 border-sky-200 dark:border-sky-800">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-indigo-500 rounded-lg flex items-center justify-center text-white font-bold text-lg">
                 {container.title.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -117,12 +117,12 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
             </div>
           </div>
           <div className="flex flex-col gap-1 ml-2">
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+            <Badge variant="secondary" className="bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300">
               App
             </Badge>
             <UrlStatusIcon 
               status={container.urlStatus} 
-              lastChecked={container.urlLastChecked} 
+              lastChecked={container.urlLastChecked?.toString()} 
               error={container.urlCheckError} 
             />
           </div>
@@ -153,7 +153,7 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
         {container.tags && container.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
             {container.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/50 dark:border-blue-700 dark:text-blue-300">
+              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-900/50 dark:border-sky-700 dark:text-sky-300">
                 {tag}
               </Badge>
             ))}
@@ -166,10 +166,10 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+        <div className="flex gap-2 pt-2 border-t border-sky-200 dark:border-sky-800">
           <Button 
             size="sm" 
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600"
             onClick={handleInstall}
             disabled={isInstalling}
             data-testid="install-button"

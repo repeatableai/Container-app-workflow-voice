@@ -772,13 +772,13 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   };
 
   return (
-    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 border-teal-200 dark:border-teal-800">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-white">
+              <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-lg flex items-center justify-center text-white">
                 <Workflow className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
@@ -793,7 +793,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </div>
           </div>
           <div className="flex flex-col gap-1 ml-2">
-            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+            <Badge variant="secondary" className="bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300">
               Workflow
             </Badge>
             <UrlStatusIcon 
@@ -805,7 +805,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         </div>
 
         {/* Workflow Status */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-4 border border-green-200 dark:border-green-800">
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-4 border border-teal-200 dark:border-teal-800">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
@@ -871,7 +871,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         {container.tags && container.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
             {container.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/50 dark:border-green-700 dark:text-green-300">
+              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-teal-50 border-teal-200 text-teal-700 dark:bg-teal-900/50 dark:border-teal-700 dark:text-teal-300">
                 {tag}
               </Badge>
             ))}
@@ -884,60 +884,15 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2 border-t border-green-200 dark:border-green-800">
-          <Button 
-            size="sm" 
-            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-            onClick={handleRunWorkflow}
-            disabled={isRunning}
-            data-testid="execute-button"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            {isRunning ? 'Executing...' : 'Execute'}
-          </Button>
+        <div className="flex gap-2 pt-2 border-t border-teal-100 dark:border-teal-800">
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setShowExpandedView(true)}
             data-testid="expand-button"
+            className="ml-auto"
           >
             <Expand className="w-4 h-4" />
-          </Button>
-          {canEdit && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleEdit}
-              data-testid="edit-button"
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => onView(container.id)}
-            data-testid="configure-button"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          {container.url && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => container.url && window.open(container.url, '_blank')}
-              data-testid="external-button"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </Button>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleViewWorkflow}
-            data-testid="preview-button"
-          >
-            <Monitor className="w-4 h-4" />
           </Button>
         </div>
 

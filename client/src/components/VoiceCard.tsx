@@ -104,13 +104,13 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
   };
 
   return (
-    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800">
+    <Card className="container-card group hover:shadow-lg transition-all duration-200 bg-gradient-to-br from-orange-50 to-rose-50 dark:from-orange-950/20 dark:to-rose-950/20 border-orange-200 dark:border-orange-800">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-rose-500 rounded-full flex items-center justify-center text-white">
                 <Mic className="w-6 h-6" />
               </div>
               <div className="flex-1 min-w-0">
@@ -125,7 +125,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
             </div>
           </div>
           <div className="flex flex-col gap-1 ml-2">
-            <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+            <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
               Voice
             </Badge>
             <UrlStatusIcon 
@@ -140,7 +140,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
         <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-4 border border-purple-200 dark:border-purple-800">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Mic className="w-4 h-4 text-purple-600" />
+              <Mic className="w-4 h-4 text-orange-600" />
               <span className="text-sm font-medium">Voice Instructions</span>
             </div>
             <div className="flex gap-2">
@@ -148,39 +148,20 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
                 size="sm"
                 variant="outline"
                 onClick={() => setShowFullInstructions(true)}
-                className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
+                className="border-orange-200 hover:bg-orange-50 dark:hover:bg-orange-950 text-xs"
                 data-testid="view-full-instructions-button"
               >
                 <Monitor className="w-3 h-3 mr-1" />
                 View Full
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCopyInstructions}
-                className="border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950 text-xs"
-                data-testid="copy-instructions-button"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3 h-3 mr-1" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3 mr-1" />
-                    Copy for 11Labs
-                  </>
-                )}
-              </Button>
             </div>
           </div>
-          <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded border border-purple-200 dark:border-purple-700 max-h-24 overflow-hidden">
+          <div className="bg-orange-50 dark:bg-orange-900/30 p-3 rounded border border-orange-200 dark:border-orange-700 max-h-24 overflow-hidden">
             <p className="text-sm text-foreground line-clamp-3 break-words" data-testid="voice-instructions-preview">
               {getFullInstructions()}
             </p>
             {(getFullInstructions().length > 150) && (
-              <div className="text-xs text-purple-600 dark:text-purple-400 mt-2 italic">
+              <div className="text-xs text-orange-600 dark:text-orange-400 mt-2 italic">
                 Click "View Full" to see complete instructions...
               </div>
             )}
@@ -191,7 +172,7 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
         {container.tags && container.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
             {container.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-purple-50 border-purple-200 text-purple-700 dark:bg-purple-900/50 dark:border-purple-700 dark:text-purple-300">
+              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/50 dark:border-orange-700 dark:text-orange-300">
                 {tag}
               </Badge>
             ))}
@@ -204,10 +185,10 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2 border-t border-purple-200 dark:border-purple-800">
+        <div className="flex gap-2 pt-2 border-t border-orange-200 dark:border-orange-800">
           <Button 
             size="sm" 
-            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="flex-1 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600"
             onClick={() => onView(container.id)}
             data-testid="use-voice-button"
           >
