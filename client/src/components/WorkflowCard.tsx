@@ -510,140 +510,59 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   const analyzeWorkflowComplexity = () => {
     const workflowData = parseWorkflowData();
     
-    // Get all text content for analysis
+    // Analyze workflow text for complex patterns
     const fullText = [
       workflowData.description,
       workflowData.visualFlow,
       workflowData.workflowJson,
       container.description,
       container.fullInstructions
-    ].filter(Boolean).join(' ');
+    ].filter(Boolean).join(' ').toLowerCase();
     
-    // Extract actual workflow steps from content
-    const extractedSteps = extractActualWorkflowSteps(fullText, container);
+    // Identify workflow patterns
+    const hasDecisionLogic = /\b(if|when|condition|branch|decide|choose|check if|validate|verify)\b/.test(fullText);
+    const hasErrorHandling = /\b(error|fail|exception|retry|fallback|catch|timeout|abort)\b/.test(fullText);
+    const hasManualSteps = /\b(manual|review|approve|human|inspect|verify manually|confirm)\b/.test(fullText);
+    const hasIntegrations = /\b(api|webhook|database|email|notification|external|integration|connect|sync)\b/.test(fullText);
+    const hasParallelProcessing = /\b(parallel|concurrent|simultaneously|async|split|fork|merge)\b/.test(fullText);
     
-    if (extractedSteps.length > 0) {
-      return generateWorkflowFromSteps(extractedSteps, container);
-    }
+    // Create complex workflow structure
+    let steps: WorkflowStep[] = [];
+    let paths: WorkflowPath[] = [];
     
-    // Fallback: Create industry-specific workflow based on metadata
-    return generateIndustrySpecificWorkflow(container, fullText);
-  };
-  
-  const extractActualWorkflowSteps = (text: string, container: Container) => {
-    const steps: any[] = [];
-    
-    // Try to extract numbered steps
-    const numberedSteps = text.match(/\d+\s*[.)]\s*([^\n\r]{10,100})/g);
-    if (numberedSteps && numberedSteps.length >= 3) {
-      return numberedSteps.slice(0, 8).map((step, index) => ({
-        name: step.replace(/^\d+\s*[.)]\s*/, '').split(/[.!?]/)[0].trim(),
-        description: step.replace(/^\d+\s*[.)]\s*/, '').trim(),
-        order: index + 1
-      }));
-    }
-    
-    // Try to extract bullet points
-    const bulletSteps = text.match(/[•\-*]\s*([^\n\r]{15,100})/g);
-    if (bulletSteps && bulletSteps.length >= 3) {
-      return bulletSteps.slice(0, 8).map((step, index) => ({
-        name: step.replace(/^[•\-*]\s*/, '').split(/[.!?]/)[0].trim(),
-        description: step.replace(/^[•\-*]\s*/, '').trim(),
-        order: index + 1
-      }));
-    }
-    
-    // Try to extract action verbs and create steps
-    const actionPattern = /\b(start|begin|create|generate|send|receive|process|analyze|review|approve|validate|check|verify|update|save|delete|export|import|notify|alert|calculate|transform|convert|filter|sort|search|find|match|compare|merge|split|combine|execute|run|trigger|schedule|monitor|track|log|report|summarize|prepare|collect|gather|organize|format|parse|extract|backup|restore|sync|upload|download|copy|move|archive|publish|share|collaborate|assign|escalate|close|complete|finish)\b[^.!?\n]{10,80}/gi;
-    const actionMatches = text.match(actionPattern);
-    if (actionMatches && actionMatches.length >= 3) {
-      return actionMatches.slice(0, 6).map((action, index) => ({
-        name: action.split(' ').slice(0, 4).join(' ').trim(),
-        description: action.trim(),
-        order: index + 1
-      }));
-    }
-    
-    return [];
-  };
-  
-  const generateWorkflowFromSteps = (extractedSteps: any[], container: Container) => {
-    const steps: WorkflowStep[] = [];
-    const paths: WorkflowPath[] = [];
-    
-    // Use extracted steps to create unique workflow
-    extractedSteps.forEach((step, index) => {
-      const stepType = determineStepType(step.description, container.industry || undefined);
-      const { x, y } = calculateStepPosition(index, extractedSteps.length);
-      
-      steps.push({
-        id: index + 1,
-        name: step.name.length > 20 ? step.name.substring(0, 20) + '...' : step.name,
-        description: step.description.length > 40 ? step.description.substring(0, 40) + '...' : step.description,
-        type: stepType.type,
-        isDecision: stepType.isDecision,
-        isManual: stepType.isManual,
-        isIntegration: stepType.isIntegration,
-        errorHandling: stepType.errorHandling,
-        x,
-        y
-      });
-      
-      // Connect to previous step
-      if (index > 0) {
-        paths.push({ from: index, to: index + 1 });
-      }
-    });
-    
-    return { steps, paths };
-  };
-  
-  const createUniversalWorkflow = (container: Container, fullText: string) => {
-    const steps: WorkflowStep[] = [];
-    const paths: WorkflowPath[] = [];
-    const text = fullText.toLowerCase();
-    
-    // Analyze workflow patterns (similar to original approach but more nuanced)
-    const hasDecisionLogic = /\b(if|when|condition|branch|decide|choose|check if|validate|verify|approve|review)\b/.test(text);
-    const hasErrorHandling = /\b(error|fail|exception|retry|fallback|catch|timeout|abort)\b/.test(text);
-    const hasManualSteps = /\b(manual|review|approve|human|inspect|verify manually|confirm)\b/.test(text);
-    const hasIntegrations = /\b(api|webhook|database|email|notification|external|integration|connect|sync|send|update)\b/.test(text);
-    const hasParallelProcessing = /\b(parallel|concurrent|simultaneously|async|split|fork|merge)\b/.test(text);
-    
-    let currentId = 1;
-    
-    // Start with intelligent trigger detection
+    // Start with trigger
     steps.push({
-      id: currentId++,
-      name: detectIntelligentTrigger(text, container.title),
-      description: detectTriggerType(text),
+      id: 1,
+      name: 'Trigger',
+      description: detectTriggerType(fullText),
       type: 'trigger',
       x: 50,
       y: 100
     });
     
-    // Add data/input step with contextual naming
-    const dataStepName = detectDataStepName(text, container.title);
-    steps.push({
-      id: currentId++,
-      name: dataStepName,
-      description: 'Gather and process input data',
-      type: 'data',
-      x: 200,
-      y: 100
-    });
-    paths.push({ from: 1, to: 2 });
-    
-    let currentX = 350;
+    let currentId = 2;
+    let currentX = 200;
     let currentY = 100;
     
-    // Add validation/decision step if detected (with intelligent naming)
+    // Add data collection/input step
+    steps.push({
+      id: currentId,
+      name: 'Collect Data',
+      description: 'Gather and process input data',
+      type: 'data',
+      x: currentX,
+      y: currentY
+    });
+    paths.push({ from: 1, to: currentId });
+    currentId++;
+    currentX += 150;
+    
+    // Add validation/decision step if detected
     if (hasDecisionLogic) {
-      const validationName = detectValidationStepName(text, container.title);
       steps.push({
         id: currentId,
-        name: validationName,
-        description: 'Validation and decision logic',
+        name: 'Validate Input',
+        description: 'Check data validity and business rules',
         type: 'validation',
         isDecision: true,
         x: currentX,
@@ -653,12 +572,11 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
       
       // Add success path
       const successId = currentId + 1;
-      const processName = detectProcessStepName(text, container.title);
       steps.push({
         id: successId,
-        name: processName,
+        name: 'Process Valid Data',
         description: 'Handle approved data',
-        type: 'action',
+        type: 'process',
         x: currentX + 150,
         y: currentY
       });
@@ -669,7 +587,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         const errorId = currentId + 2;
         steps.push({
           id: errorId,
-          name: 'Handle Issues',
+          name: 'Handle Invalid Data',
           description: 'Process validation failures',
           type: 'error',
           errorHandling: true,
@@ -677,7 +595,10 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
           y: currentY + 100
         });
         paths.push({ from: currentId, to: errorId, condition: 'Invalid', isError: true });
+        
+        // Add retry path
         paths.push({ from: errorId, to: currentId, isRetry: true });
+        
         currentId = errorId + 1;
         currentX += 300;
       } else {
@@ -688,11 +609,10 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     
     // Add manual review step if detected
     if (hasManualSteps) {
-      const reviewName = detectReviewStepName(text, container.title);
       steps.push({
         id: currentId,
-        name: reviewName,
-        description: 'Human review required',
+        name: 'Manual Review',
+        description: 'Human approval required',
         type: 'review',
         isManual: true,
         x: currentX,
@@ -703,9 +623,9 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
       currentX += 150;
     }
     
-    // Add integration steps if detected (with intelligent naming)
+    // Add integration steps if detected
     if (hasIntegrations) {
-      const integrationSteps = detectIntelligentIntegrations(text, container.title);
+      const integrationSteps = detectIntegrationTypes(fullText);
       integrationSteps.forEach((integration, index) => {
         steps.push({
           id: currentId,
@@ -722,14 +642,16 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
       });
       
       if (hasParallelProcessing && integrationSteps.length > 1) {
+        // Add merge point after parallel processing
         steps.push({
           id: currentId,
           name: 'Merge Results',
           description: 'Combine parallel outputs',
-          type: 'action',
+          type: 'process',
           x: currentX + 150,
           y: currentY
         });
+        // Connect all parallel steps to merge point
         integrationSteps.forEach((_, index) => {
           const stepId = currentId - integrationSteps.length + index;
           paths.push({ from: stepId, to: currentId });
@@ -741,11 +663,10 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
       }
     }
     
-    // Add completion step with intelligent naming
-    const completionName = detectCompletionStepName(text, container.title);
+    // Add completion step
     steps.push({
       id: currentId,
-      name: completionName,
+      name: 'Complete',
       description: 'Workflow finished successfully',
       type: 'complete',
       x: currentX,
@@ -754,171 +675,6 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     paths.push({ from: steps[steps.length - 2]?.id || currentId - 1, to: currentId });
     
     return { steps, paths };
-  };
-
-  const detectIntelligentTrigger = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Invoice Received';
-    if (titleLower.includes('customer') || titleLower.includes('support')) return 'Customer Request';
-    if (titleLower.includes('order') || titleLower.includes('purchase')) return 'Order Placed';
-    if (titleLower.includes('user') || titleLower.includes('signup')) return 'User Registration';
-    if (titleLower.includes('report') || titleLower.includes('analyt')) return 'Report Request';
-    if (titleLower.includes('content') || titleLower.includes('blog')) return 'Content Request';
-    if (titleLower.includes('lead') || titleLower.includes('prospect')) return 'Lead Generated';
-    if (titleLower.includes('hire') || titleLower.includes('recruit')) return 'Application Received';
-    if (text.includes('webhook')) return 'Webhook Triggered';
-    if (text.includes('schedule') || text.includes('cron')) return 'Scheduled Event';
-    if (text.includes('email')) return 'Email Received';
-    if (text.includes('form') || text.includes('submit')) return 'Form Submitted';
-    return 'Process Started';
-  };
-  
-  const detectDataStepName = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Extract Invoice Data';
-    if (titleLower.includes('customer')) return 'Gather Customer Info';
-    if (titleLower.includes('order')) return 'Collect Order Details';
-    if (titleLower.includes('user')) return 'Process User Data';
-    if (titleLower.includes('report')) return 'Collect Data Sources';
-    if (titleLower.includes('content')) return 'Gather Requirements';
-    if (titleLower.includes('lead')) return 'Capture Lead Info';
-    if (text.includes('database') || text.includes('record')) return 'Fetch Records';
-    if (text.includes('api') || text.includes('external')) return 'Retrieve External Data';
-    return 'Collect Input Data';
-  };
-  
-  const detectValidationStepName = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Validate Payment Info';
-    if (titleLower.includes('customer')) return 'Verify Customer Details';
-    if (titleLower.includes('order')) return 'Check Inventory';
-    if (titleLower.includes('user')) return 'Validate Registration';
-    if (titleLower.includes('content')) return 'Content Review';
-    if (titleLower.includes('lead')) return 'Qualify Lead';
-    if (text.includes('policy') || text.includes('compliance')) return 'Compliance Check';
-    if (text.includes('security') || text.includes('auth')) return 'Security Validation';
-    return 'Validate Input';
-  };
-  
-  const detectProcessStepName = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Process Payment';
-    if (titleLower.includes('customer')) return 'Handle Request';
-    if (titleLower.includes('order')) return 'Fulfill Order';
-    if (titleLower.includes('user')) return 'Create Account';
-    if (titleLower.includes('report')) return 'Generate Report';
-    if (titleLower.includes('content')) return 'Create Content';
-    if (titleLower.includes('lead')) return 'Convert Lead';
-    return 'Execute Process';
-  };
-  
-  const detectReviewStepName = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Manager Approval';
-    if (titleLower.includes('content')) return 'Editorial Review';
-    if (titleLower.includes('legal')) return 'Legal Review';
-    if (titleLower.includes('hire') || titleLower.includes('recruit')) return 'Interview Process';
-    if (text.includes('compliance') || text.includes('audit')) return 'Compliance Review';
-    return 'Manual Review';
-  };
-  
-  const detectCompletionStepName = (text: string, title: string) => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('invoice') || titleLower.includes('payment')) return 'Payment Complete';
-    if (titleLower.includes('customer')) return 'Issue Resolved';
-    if (titleLower.includes('order')) return 'Order Fulfilled';
-    if (titleLower.includes('user')) return 'Account Active';
-    if (titleLower.includes('report')) return 'Report Delivered';
-    if (titleLower.includes('content')) return 'Content Published';
-    if (titleLower.includes('lead')) return 'Lead Converted';
-    if (titleLower.includes('hire')) return 'Candidate Hired';
-    return 'Process Complete';
-  };
-  
-  const detectIntelligentIntegrations = (text: string, title: string) => {
-    const integrations: Array<{name: string, description: string, type: string}> = [];
-    const titleLower = title.toLowerCase();
-    
-    if (text.includes('email') || text.includes('send') || text.includes('notify')) {
-      const name = titleLower.includes('customer') ? 'Notify Customer' :
-                   titleLower.includes('user') ? 'Send Welcome Email' :
-                   titleLower.includes('order') ? 'Send Confirmation' :
-                   'Send Notification';
-      integrations.push({ name, description: 'Email notification', type: 'action' });
-    }
-    
-    if (text.includes('database') || text.includes('save') || text.includes('store') || text.includes('update')) {
-      const name = titleLower.includes('customer') ? 'Update Customer Record' :
-                   titleLower.includes('order') ? 'Save Order Data' :
-                   titleLower.includes('user') ? 'Store User Profile' :
-                   'Update Database';
-      integrations.push({ name, description: 'Database operation', type: 'data' });
-    }
-    
-    if (text.includes('api') || text.includes('webhook') || text.includes('external') || text.includes('integration')) {
-      const name = titleLower.includes('payment') ? 'Payment Gateway' :
-                   titleLower.includes('crm') ? 'Update CRM' :
-                   titleLower.includes('inventory') ? 'Check Inventory' :
-                   'External API Call';
-      integrations.push({ name, description: 'External service integration', type: 'integration' });
-    }
-    
-    if (integrations.length === 0) {
-      integrations.push({
-        name: 'Execute Action',
-        description: 'Primary workflow action',
-        type: 'action'
-      });
-    }
-    
-    return integrations.slice(0, 3);
-  };
-
-  const generateIndustrySpecificWorkflow = (container: Container, fullText: string) => {
-    // Use the universal workflow approach
-    return createUniversalWorkflow(container, fullText);
-  };
-  
-  
-  const determineStepType = (description: string, industry?: string) => {
-    const desc = description.toLowerCase();
-    
-    return {
-      type: desc.includes('error') || desc.includes('fail') ? 'error' :
-            desc.includes('trigger') || desc.includes('start') || desc.includes('begin') ? 'trigger' :
-            desc.includes('decision') || desc.includes('check') || desc.includes('verify') || desc.includes('validate') ? 'validation' :
-            desc.includes('review') || desc.includes('approve') || desc.includes('human') ? 'review' :
-            desc.includes('data') || desc.includes('collect') || desc.includes('gather') ? 'data' :
-            desc.includes('complete') || desc.includes('finish') || desc.includes('end') ? 'complete' :
-            'action',
-      isDecision: desc.includes('decision') || desc.includes('if ') || desc.includes('whether') || desc.includes('choose'),
-      isManual: desc.includes('manual') || desc.includes('review') || desc.includes('approve') || desc.includes('human'),
-      isIntegration: desc.includes('api') || desc.includes('external') || desc.includes('integration') || desc.includes('webhook'),
-      errorHandling: desc.includes('error') || desc.includes('fail') || desc.includes('exception')
-    };
-  };
-  
-  const calculateStepPosition = (index: number, totalSteps: number) => {
-    const baseX = 50;
-    const stepWidth = 140;
-    const rowHeight = 120;
-    
-    // Create varied layouts based on step count
-    if (totalSteps <= 4) {
-      // Linear layout
-      return { x: baseX + (index * stepWidth), y: 100 };
-    } else if (totalSteps <= 6) {
-      // Two rows
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      return { x: baseX + (col * stepWidth), y: 100 + (row * rowHeight) };
-    } else {
-      // Three rows with staggered layout
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      const offsetX = row % 2 === 1 ? stepWidth / 2 : 0; // Stagger alternate rows
-      return { x: baseX + (col * stepWidth) + offsetX, y: 80 + (row * (rowHeight * 0.8)) };
-    }
   };
   
   const detectTriggerType = (text: string): string => {
