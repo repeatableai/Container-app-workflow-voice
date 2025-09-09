@@ -472,105 +472,193 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                   </pre>
                 </div>
               ) : (
-                /* Enhanced Professional Whiteboard-Style Visual Flow */
-                <div className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg p-8 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
-                  {/* Grid Background Pattern */}
+                /* Lindy.ai Style Professional Flowchart */
+                <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                  {/* Subtle Grid Background - Lindy.ai Style */}
                   <div 
-                    className="absolute inset-0 opacity-20" 
+                    className="absolute inset-0 opacity-10 dark:opacity-20" 
                     style={{
                       backgroundImage: `
-                        linear-gradient(rgba(100,100,100,0.2) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(100,100,100,0.2) 1px, transparent 1px)
+                        linear-gradient(rgba(100,116,139,0.3) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(100,116,139,0.3) 1px, transparent 1px)
                       `,
-                      backgroundSize: '25px 25px'
+                      backgroundSize: '20px 20px'
                     }}
                   />
                   
-                  {/* Workflow Canvas - Redesigned to match whiteboard example */}
+                  {/* Workflow Canvas - Column-Based Lindy.ai Layout */}
                   <div className="relative z-10">
-                    <svg viewBox="0 0 1000 600" className="w-full h-96">
-                      {/* Connection Lines - More strategic positioning */}
-                      <line x1="150" y1="100" x2="300" y2="100" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="450" y1="100" x2="600" y2="100" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="750" y1="100" x2="850" y2="200" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="850" y1="280" x2="750" y2="380" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="600" y1="380" x2="450" y2="380" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="300" y1="380" x2="150" y2="500" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                    <svg viewBox="0 0 1200 800" className="w-full h-[500px]">
+                      {/* Connection Lines - Clean Straight Lines */}
+                      <line x1="150" y1="120" x2="150" y2="200" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="150" y1="280" x2="150" y2="360" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="150" y1="440" x2="150" y2="520" stroke="#94a3b8" strokeWidth="2" />
                       
-                      {/* Arrow Marker Definition */}
-                      <defs>
-                        <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
-                          <polygon points="0 0, 12 4, 0 8" fill="#6b7280" />
-                        </marker>
-                      </defs>
+                      <line x1="450" y1="120" x2="450" y2="200" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="450" y1="280" x2="450" y2="360" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="450" y1="440" x2="450" y2="520" stroke="#94a3b8" strokeWidth="2" />
                       
-                      {/* START Node - Larger and more prominent */}
-                      <circle cx="100" cy="100" r="35" fill="#10b981" stroke="#059669" strokeWidth="3" />
-                      <text x="100" y="107" textAnchor="middle" className="fill-white text-sm font-bold">START</text>
+                      <line x1="750" y1="120" x2="750" y2="200" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="750" y1="280" x2="750" y2="360" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="750" y1="440" x2="750" y2="520" stroke="#94a3b8" strokeWidth="2" />
                       
-                      {/* Database Setup - Better positioned */}
-                      <rect x="250" y="65" width="120" height="70" rx="10" fill="#3b82f6" stroke="#2563eb" strokeWidth="3" />
-                      <text x="310" y="90" textAnchor="middle" className="fill-white text-sm font-bold">Database</text>
-                      <text x="310" y="108" textAnchor="middle" className="fill-white text-xs">Setup Product</text>
-                      <text x="310" y="122" textAnchor="middle" className="fill-white text-xs">Accounts</text>
+                      <line x1="1050" y1="120" x2="1050" y2="200" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="1050" y1="280" x2="1050" y2="360" stroke="#94a3b8" strokeWidth="2" />
                       
-                      {/* Webhook Integration - Positioned like example */}
-                      <rect x="650" y="65" width="120" height="70" rx="10" fill="#10b981" stroke="#059669" strokeWidth="3" />
-                      <text x="710" y="90" textAnchor="middle" className="fill-white text-sm font-bold">Webhook</text>
-                      <text x="710" y="108" textAnchor="middle" className="fill-white text-xs">Customer Signup</text>
-                      <text x="710" y="122" textAnchor="middle" className="fill-white text-xs">Webhook</text>
+                      {/* Horizontal connections between columns */}
+                      <line x1="210" y1="80" x2="390" y2="80" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="510" y1="80" x2="690" y2="80" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="810" y1="80" x2="990" y2="80" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="210" y1="240" x2="390" y2="240" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="510" y1="240" x2="690" y2="240" stroke="#94a3b8" strokeWidth="2" />
+                      <line x1="810" y1="240" x2="990" y2="240" stroke="#94a3b8" strokeWidth="2" />
                       
-                      {/* Data Processing - Top right */}
-                      <rect x="790" y="165" width="120" height="70" rx="10" fill="#f59e0b" stroke="#d97706" strokeWidth="3" />
-                      <text x="850" y="190" textAnchor="middle" className="fill-white text-sm font-bold">Capture</text>
-                      <text x="850" y="208" textAnchor="middle" className="fill-white text-xs">Customer Data</text>
+                      {/* COLUMN 1: Trigger & Setup */}
                       
-                      {/* Validation Step - Bottom right */}
-                      <rect x="650" y="345" width="120" height="70" rx="10" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="3" />
-                      <text x="710" y="370" textAnchor="middle" className="fill-white text-sm font-bold">Validate</text>
-                      <text x="710" y="388" textAnchor="middle" className="fill-white text-xs">Customer</text>
-                      <text x="710" y="402" textAnchor="middle" className="fill-white text-xs">Information</text>
+                      {/* Webhook Trigger */}
+                      <rect x="70" y="50" width="160" height="60" rx="8" fill="#10b981" stroke="#059669" strokeWidth="1" />
+                      <rect x="80" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="90" y="68" textAnchor="middle" className="fill-white text-xs">⚡</text>
+                      <text x="130" y="70" className="fill-white text-sm font-medium">Webhook</text>
+                      <text x="130" y="85" className="fill-white text-xs">Customer Event</text>
+                      <text x="130" y="100" className="fill-white text-xs">Reception</text>
                       
-                      {/* Manual Review - Bottom center */}
-                      <rect x="350" y="345" width="120" height="70" rx="10" fill="#ef4444" stroke="#dc2626" strokeWidth="3" />
-                      <text x="410" y="370" textAnchor="middle" className="fill-white text-sm font-bold">Manual Data</text>
-                      <text x="410" y="388" textAnchor="middle" className="fill-white text-xs">Review</text>
+                      {/* Capture Data */}
+                      <rect x="70" y="210" width="160" height="60" rx="8" fill="#3b82f6" stroke="#2563eb" strokeWidth="1" />
+                      <rect x="80" y="215" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="90" y="228" textAnchor="middle" className="fill-white text-xs">📥</text>
+                      <text x="130" y="230" className="fill-white text-sm font-medium">Capture</text>
+                      <text x="130" y="245" className="fill-white text-xs">Event Information</text>
+                      <text x="130" y="260" className="fill-white text-xs">Data Structure</text>
                       
-                      {/* Error Handling Node */}
-                      <rect x="100" y="15" width="120" height="50" rx="25" fill="#dc2626" stroke="#b91c1c" strokeWidth="2" />
-                      <text x="160" y="35" textAnchor="middle" className="fill-white text-xs font-medium">Profile Creation</text>
-                      <text x="160" y="50" textAnchor="middle" className="fill-white text-xs">Failed</text>
+                      {/* Parse Data */}
+                      <rect x="70" y="370" width="160" height="60" rx="8" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="1" />
+                      <rect x="80" y="375" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="90" y="388" textAnchor="middle" className="fill-white text-xs">🔧</text>
+                      <text x="130" y="390" className="fill-white text-sm font-medium">Parse</text>
+                      <text x="130" y="405" className="fill-white text-xs">Customer Data</text>
+                      <text x="130" y="420" className="fill-white text-xs">Fields</text>
                       
-                      {/* Complete Node - Bottom left */}
-                      <circle cx="100" cy="520" r="35" fill="#059669" stroke="#047857" strokeWidth="3" />
-                      <text x="100" y="527" textAnchor="middle" className="fill-white text-sm font-bold">DONE</text>
+                      {/* Validate Format */}
+                      <rect x="70" y="530" width="160" height="60" rx="8" fill="#f59e0b" stroke="#d97706" strokeWidth="1" />
+                      <rect x="80" y="535" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="90" y="548" textAnchor="middle" className="fill-white text-xs">✓</text>
+                      <text x="130" y="550" className="fill-white text-sm font-medium">Validate</text>
+                      <text x="130" y="565" className="fill-white text-xs">Data Format</text>
+                      <text x="130" y="580" className="fill-white text-xs">Requirements</text>
+                      
+                      {/* COLUMN 2: Processing */}
+                      
+                      {/* Email & Marketing Message */}
+                      <rect x="370" y="50" width="160" height="60" rx="8" fill="#06b6d4" stroke="#0891b2" strokeWidth="1" />
+                      <rect x="380" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="390" y="68" textAnchor="middle" className="fill-white text-xs">📧</text>
+                      <text x="430" y="70" className="fill-white text-sm font-medium">Send Message</text>
+                      <text x="430" y="85" className="fill-white text-xs">Email Marketing</text>
+                      <text x="430" y="100" className="fill-white text-xs">Campaign</text>
+                      
+                      {/* Validated Customer Data */}
+                      <rect x="370" y="210" width="160" height="60" rx="8" fill="#84cc16" stroke="#65a30d" strokeWidth="1" />
+                      <rect x="380" y="215" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="390" y="228" textAnchor="middle" className="fill-white text-xs">📊</text>
+                      <text x="430" y="230" className="fill-white text-sm font-medium">Validated Data</text>
+                      <text x="430" y="245" className="fill-white text-xs">Customer Info</text>
+                      <text x="430" y="260" className="fill-white text-xs">Ready for Use</text>
+                      
+                      {/* Error Handler */}
+                      <rect x="370" y="370" width="160" height="60" rx="8" fill="#ef4444" stroke="#dc2626" strokeWidth="1" />
+                      <rect x="380" y="375" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="390" y="388" textAnchor="middle" className="fill-white text-xs">⚠️</text>
+                      <text x="430" y="390" className="fill-white text-sm font-medium">Error</text>
+                      <text x="430" y="405" className="fill-white text-xs">Exception Handler</text>
+                      <text x="430" y="420" className="fill-white text-xs">Fallback Logic</text>
+                      
+                      {/* Calculate Statistics Score */}
+                      <rect x="370" y="530" width="160" height="60" rx="8" fill="#a855f7" stroke="#9333ea" strokeWidth="1" />
+                      <rect x="380" y="535" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="390" y="548" textAnchor="middle" className="fill-white text-xs">📈</text>
+                      <text x="430" y="550" className="fill-white text-sm font-medium">Statistics</text>
+                      <text x="430" y="565" className="fill-white text-xs">Score Calculation</text>
+                      <text x="430" y="580" className="fill-white text-xs">Analytics</text>
+                      
+                      {/* COLUMN 3: Database & Storage */}
+                      
+                      {/* Add to Marketing Campaign */}
+                      <rect x="670" y="50" width="160" height="60" rx="8" fill="#ec4899" stroke="#db2777" strokeWidth="1" />
+                      <rect x="680" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="690" y="68" textAnchor="middle" className="fill-white text-xs">🎯</text>
+                      <text x="730" y="70" className="fill-white text-sm font-medium">Add to Campaign</text>
+                      <text x="730" y="85" className="fill-white text-xs">Marketing List</text>
+                      <text x="730" y="100" className="fill-white text-xs">Segmentation</text>
+                      
+                      {/* Database */}
+                      <rect x="670" y="210" width="160" height="60" rx="8" fill="#1e40af" stroke="#1d4ed8" strokeWidth="1" />
+                      <rect x="680" y="215" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="690" y="228" textAnchor="middle" className="fill-white text-xs">🗄️</text>
+                      <text x="730" y="230" className="fill-white text-sm font-medium">Database</text>
+                      <text x="730" y="245" className="fill-white text-xs">Save Customer</text>
+                      <text x="730" y="260" className="fill-white text-xs">Record</text>
+                      
+                      {/* Save */}
+                      <rect x="670" y="370" width="160" height="60" rx="8" fill="#059669" stroke="#047857" strokeWidth="1" />
+                      <rect x="680" y="375" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="690" y="388" textAnchor="middle" className="fill-white text-xs">💾</text>
+                      <text x="730" y="390" className="fill-white text-sm font-medium">Save</text>
+                      <text x="730" y="405" className="fill-white text-xs">Audit Trail</text>
+                      <text x="730" y="420" className="fill-white text-xs">Log Actions</text>
+                      
+                      {/* Scheduled Follow-up Task */}
+                      <rect x="670" y="530" width="160" height="60" rx="8" fill="#ea580c" stroke="#dc2626" strokeWidth="1" />
+                      <rect x="680" y="535" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="690" y="548" textAnchor="middle" className="fill-white text-xs">⏰</text>
+                      <text x="730" y="550" className="fill-white text-sm font-medium">Schedule</text>
+                      <text x="730" y="565" className="fill-white text-xs">Follow-up Task</text>
+                      <text x="730" y="580" className="fill-white text-xs">Reminder</text>
+                      
+                      {/* COLUMN 4: Completion */}
+                      
+                      {/* Process Complete Success */}
+                      <rect x="970" y="50" width="160" height="60" rx="8" fill="#16a34a" stroke="#15803d" strokeWidth="1" />
+                      <rect x="980" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="990" y="68" textAnchor="middle" className="fill-white text-xs">✅</text>
+                      <text x="1030" y="70" className="fill-white text-sm font-medium">Success</text>
+                      <text x="1030" y="85" className="fill-white text-xs">Process Complete</text>
+                      <text x="1030" y="100" className="fill-white text-xs">Customer Added</text>
+                      
+                      {/* Process Complete Pending Review */}
+                      <rect x="970" y="210" width="160" height="60" rx="8" fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
+                      <rect x="980" y="215" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="990" y="228" textAnchor="middle" className="fill-white text-xs">⏳</text>
+                      <text x="1030" y="230" className="fill-white text-sm font-medium">Pending</text>
+                      <text x="1030" y="245" className="fill-white text-xs">Manual Review</text>
+                      <text x="1030" y="260" className="fill-white text-xs">Required</text>
+                      
+                      {/* Send Subscription Bundle */}
+                      <rect x="970" y="370" width="160" height="60" rx="8" fill="#7c3aed" stroke="#6d28d9" strokeWidth="1" />
+                      <rect x="980" y="375" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
+                      <text x="990" y="388" textAnchor="middle" className="fill-white text-xs">📦</text>
+                      <text x="1030" y="390" className="fill-white text-sm font-medium">Bundle</text>
+                      <text x="1030" y="405" className="fill-white text-xs">Send Subscription</text>
+                      <text x="1030" y="420" className="fill-white text-xs">Package</text>
                     </svg>
                     
-                    {/* Integration Legend - More comprehensive */}
-                    <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
+                    {/* Clean Professional Legend */}
+                    <div className="mt-8 grid grid-cols-4 gap-4 text-sm">
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                        <span className="text-muted-foreground">Database Operations</span>
+                        <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                        <span className="text-muted-foreground">Triggers</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-green-500 rounded"></div>
-                        <span className="text-muted-foreground">API/Webhook Integration</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                        <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
                         <span className="text-muted-foreground">Data Processing</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-purple-500 rounded"></div>
-                        <span className="text-muted-foreground">Validation/Logic</span>
+                        <div className="w-3 h-3 bg-purple-500 rounded-sm"></div>
+                        <span className="text-muted-foreground">Logic & Validation</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-red-500 rounded"></div>
-                        <span className="text-muted-foreground">Manual/Error Handling</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-emerald-600 rounded-full"></div>
-                        <span className="text-muted-foreground">Start/End Points</span>
+                        <div className="w-3 h-3 bg-gray-500 rounded-sm"></div>
+                        <span className="text-muted-foreground">Database & Storage</span>
                       </div>
                     </div>
                   </div>
