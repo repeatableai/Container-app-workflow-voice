@@ -818,7 +818,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
               variant={isRunning ? "secondary" : "default"}
               onClick={handleRunWorkflow}
               disabled={isRunning}
-              className={!isRunning ? "bg-green-600 hover:bg-green-700" : ""}
+              className={!isRunning ? "bg-green-600 hover:bg-green-700 text-white" : ""}
               data-testid="run-workflow-button"
             >
               {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}

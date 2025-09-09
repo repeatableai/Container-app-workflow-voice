@@ -161,7 +161,7 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
         <div className="flex gap-2 pt-2 border-t border-sky-200 dark:border-sky-800">
           <Button 
             size="sm" 
-            className="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600"
+            className="flex-1 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white"
             onClick={handleViewApp}
             data-testid="preview-button"
           >
