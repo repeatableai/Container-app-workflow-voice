@@ -806,23 +806,13 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
 
         {/* Workflow Status */}
         <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-4 border border-teal-200 dark:border-teal-800">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center mb-3">
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${isRunning ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
               <span className="text-sm font-medium">
                 {isRunning ? 'Running...' : 'Ready to execute'}
               </span>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleViewWorkflow}
-              className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200"
-              data-testid="expand-workflow-button"
-            >
-              <ChevronDown className="w-4 h-4 mr-2" />
-              Expand to view
-            </Button>
           </div>
           
           {isRunning && (
