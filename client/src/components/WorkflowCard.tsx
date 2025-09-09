@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit, Expand, CheckCircle, ArrowRight, Database, MessageSquare } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit, Expand, CheckCircle, ArrowRight, Database, MessageSquare, FileText, Eye, Code } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -377,9 +378,9 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         </DialogContent>
       </Dialog>
 
-      {/* Expanded View Modal */}
+      {/* Expanded View Modal with Tabs */}
       <Dialog open={showExpandedView} onOpenChange={setShowExpandedView}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Workflow className="w-5 h-5" />
@@ -387,212 +388,298 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </DialogTitle>
           </DialogHeader>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh] pr-2">
-            {/* Left Column - Workflow Details */}
-            <div className="space-y-4">
-              {/* JSONL Data Badge */}
-              {parseWorkflowData().isJsonl && (
-                <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                  JSONL Imported Workflow
-                </Badge>
-              )}
-              
-              {/* Full Instructions with Copy Button */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Full Instructions</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCopyInstructions}
-                    className="h-7 px-2"
-                    data-testid="copy-instructions"
-                  >
-                    <Copy className="w-3 h-3 mr-1" />
-                    Copy
-                  </Button>
-                </div>
-                <Textarea
-                  value={container.fullInstructions || container.description || 'No instructions available'}
-                  readOnly
-                  rows={6}
-                  className="text-xs bg-muted font-mono"
-                  data-testid="full-instructions"
-                />
-              </div>
+          <Tabs defaultValue="visual" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <Eye className="w-4 h-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="visual" className="flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                Visual Workflow
+              </TabsTrigger>
+              <TabsTrigger value="instructions" className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Instructions
+              </TabsTrigger>
+              <TabsTrigger value="config" className="flex items-center gap-2">
+                <Code className="w-4 h-4" />
+                Configuration
+              </TabsTrigger>
+            </TabsList>
 
-              {/* JSONL Specific Data */}
-              {parseWorkflowData().isJsonl && (
-                <>
-                  {parseWorkflowData().importance && (
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* JSONL Data Badge */}
+                {parseWorkflowData().isJsonl && (
+                  <div className="col-span-full">
+                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                      JSONL Imported Workflow
+                    </Badge>
+                  </div>
+                )}
+                
+                {/* Workflow Metrics */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="w-5 h-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-700 dark:text-green-300">Executions</span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-800 dark:text-green-200">{workflowStats.executions}</div>
+                  </div>
+                  <div className="bg-emerald-50 dark:bg-emerald-900/30 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="w-5 h-5 text-emerald-600" />
+                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Success Rate</span>
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">{workflowStats.successRate}%</div>
+                  </div>
+                </div>
+
+                {/* JSONL Specific Data */}
+                <div className="space-y-4">
+                  {parseWorkflowData().isJsonl && parseWorkflowData().importance && (
                     <div>
                       <Label className="text-sm font-medium">Why It Matters</Label>
                       <p className="text-sm text-muted-foreground mt-1">{parseWorkflowData().importance}</p>
                     </div>
                   )}
                   
-                  {parseWorkflowData().timeComparison && (
+                  {parseWorkflowData().isJsonl && parseWorkflowData().timeComparison && (
                     <div>
                       <Label className="text-sm font-medium">Time Comparison</Label>
                       <p className="text-sm text-muted-foreground mt-1">{parseWorkflowData().timeComparison}</p>
                     </div>
                   )}
-                </>
-              )}
-
-              {/* Workflow Metrics */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BarChart3 className="w-4 h-4 text-green-600" />
-                    <span className="text-xs font-medium text-green-700 dark:text-green-300">Executions</span>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">Description</Label>
+                    <p className="text-sm text-muted-foreground mt-1">{parseWorkflowData().description || 'No description available'}</p>
                   </div>
-                  <div className="text-lg font-bold text-green-800 dark:text-green-200">{workflowStats.executions}</div>
-                </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Zap className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">Success Rate</span>
-                  </div>
-                  <div className="text-lg font-bold text-emerald-800 dark:text-emerald-200">{workflowStats.successRate}%</div>
                 </div>
               </div>
-            </div>
+            </TabsContent>
 
-            {/* Right Column - Visual Workflow */}
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  Visual Workflow
-                </Label>
-                
-                {parseWorkflowData().visualFlow ? (
-                  /* JSONL Visual Flow */
-                  <div className="bg-muted rounded-lg p-4 mt-2">
-                    <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground">
-                      {parseWorkflowData().visualFlow}
-                    </pre>
-                  </div>
-                ) : (
-                  /* Professional Whiteboard-Style Visual Flow */
-                  <div className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg p-6 mt-2 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
-                    {/* Grid Background Pattern */}
-                    <div 
-                      className="absolute inset-0 opacity-20" 
-                      style={{
-                        backgroundImage: `
-                          linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-                        `,
-                        backgroundSize: '20px 20px'
-                      }}
-                    />
+            {/* Visual Workflow Tab */}
+            <TabsContent value="visual" className="mt-6">
+              {parseWorkflowData().visualFlow ? (
+                /* JSONL Visual Flow */
+                <div className="bg-muted rounded-lg p-6">
+                  <pre className="text-sm whitespace-pre-wrap font-mono text-muted-foreground">
+                    {parseWorkflowData().visualFlow}
+                  </pre>
+                </div>
+              ) : (
+                /* Enhanced Professional Whiteboard-Style Visual Flow */
+                <div className="bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 rounded-lg p-8 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                  {/* Grid Background Pattern */}
+                  <div 
+                    className="absolute inset-0 opacity-20" 
+                    style={{
+                      backgroundImage: `
+                        linear-gradient(rgba(100,100,100,0.2) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(100,100,100,0.2) 1px, transparent 1px)
+                      `,
+                      backgroundSize: '25px 25px'
+                    }}
+                  />
+                  
+                  {/* Workflow Canvas - Redesigned to match whiteboard example */}
+                  <div className="relative z-10">
+                    <svg viewBox="0 0 1000 600" className="w-full h-96">
+                      {/* Connection Lines - More strategic positioning */}
+                      <line x1="150" y1="100" x2="300" y2="100" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      <line x1="450" y1="100" x2="600" y2="100" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      <line x1="750" y1="100" x2="850" y2="200" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      <line x1="850" y1="280" x2="750" y2="380" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      <line x1="600" y1="380" x2="450" y2="380" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      <line x1="300" y1="380" x2="150" y2="500" stroke="#6b7280" strokeWidth="3" markerEnd="url(#arrowhead)" />
+                      
+                      {/* Arrow Marker Definition */}
+                      <defs>
+                        <marker id="arrowhead" markerWidth="12" markerHeight="8" refX="10" refY="4" orient="auto">
+                          <polygon points="0 0, 12 4, 0 8" fill="#6b7280" />
+                        </marker>
+                      </defs>
+                      
+                      {/* START Node - Larger and more prominent */}
+                      <circle cx="100" cy="100" r="35" fill="#10b981" stroke="#059669" strokeWidth="3" />
+                      <text x="100" y="107" textAnchor="middle" className="fill-white text-sm font-bold">START</text>
+                      
+                      {/* Database Setup - Better positioned */}
+                      <rect x="250" y="65" width="120" height="70" rx="10" fill="#3b82f6" stroke="#2563eb" strokeWidth="3" />
+                      <text x="310" y="90" textAnchor="middle" className="fill-white text-sm font-bold">Database</text>
+                      <text x="310" y="108" textAnchor="middle" className="fill-white text-xs">Setup Product</text>
+                      <text x="310" y="122" textAnchor="middle" className="fill-white text-xs">Accounts</text>
+                      
+                      {/* Webhook Integration - Positioned like example */}
+                      <rect x="650" y="65" width="120" height="70" rx="10" fill="#10b981" stroke="#059669" strokeWidth="3" />
+                      <text x="710" y="90" textAnchor="middle" className="fill-white text-sm font-bold">Webhook</text>
+                      <text x="710" y="108" textAnchor="middle" className="fill-white text-xs">Customer Signup</text>
+                      <text x="710" y="122" textAnchor="middle" className="fill-white text-xs">Webhook</text>
+                      
+                      {/* Data Processing - Top right */}
+                      <rect x="790" y="165" width="120" height="70" rx="10" fill="#f59e0b" stroke="#d97706" strokeWidth="3" />
+                      <text x="850" y="190" textAnchor="middle" className="fill-white text-sm font-bold">Capture</text>
+                      <text x="850" y="208" textAnchor="middle" className="fill-white text-xs">Customer Data</text>
+                      
+                      {/* Validation Step - Bottom right */}
+                      <rect x="650" y="345" width="120" height="70" rx="10" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="3" />
+                      <text x="710" y="370" textAnchor="middle" className="fill-white text-sm font-bold">Validate</text>
+                      <text x="710" y="388" textAnchor="middle" className="fill-white text-xs">Customer</text>
+                      <text x="710" y="402" textAnchor="middle" className="fill-white text-xs">Information</text>
+                      
+                      {/* Manual Review - Bottom center */}
+                      <rect x="350" y="345" width="120" height="70" rx="10" fill="#ef4444" stroke="#dc2626" strokeWidth="3" />
+                      <text x="410" y="370" textAnchor="middle" className="fill-white text-sm font-bold">Manual Data</text>
+                      <text x="410" y="388" textAnchor="middle" className="fill-white text-xs">Review</text>
+                      
+                      {/* Error Handling Node */}
+                      <rect x="100" y="15" width="120" height="50" rx="25" fill="#dc2626" stroke="#b91c1c" strokeWidth="2" />
+                      <text x="160" y="35" textAnchor="middle" className="fill-white text-xs font-medium">Profile Creation</text>
+                      <text x="160" y="50" textAnchor="middle" className="fill-white text-xs">Failed</text>
+                      
+                      {/* Complete Node - Bottom left */}
+                      <circle cx="100" cy="520" r="35" fill="#059669" stroke="#047857" strokeWidth="3" />
+                      <text x="100" y="527" textAnchor="middle" className="fill-white text-sm font-bold">DONE</text>
+                    </svg>
                     
-                    {/* Workflow Canvas */}
-                    <div className="relative z-10">
-                      <svg viewBox="0 0 800 400" className="w-full h-64">
-                        {/* Connection Lines */}
-                        <line x1="120" y1="80" x2="280" y2="80" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        <line x1="400" y1="80" x2="560" y2="80" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        <line x1="680" y1="80" x2="680" y2="160" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        <line x1="680" y1="240" x2="560" y2="240" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        <line x1="440" y1="240" x2="280" y2="240" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        <line x1="160" y1="240" x2="160" y2="320" stroke="#6b7280" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                        
-                        {/* Arrow Marker Definition */}
-                        <defs>
-                          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
-                          </marker>
-                        </defs>
-                        
-                        {/* Start Node */}
-                        <circle cx="80" cy="80" r="30" fill="#10b981" stroke="#059669" strokeWidth="2" />
-                        <text x="80" y="86" textAnchor="middle" className="fill-white text-sm font-medium">START</text>
-                        
-                        {/* Database Integration */}
-                        <rect x="240" y="50" width="100" height="60" rx="8" fill="#3b82f6" stroke="#2563eb" strokeWidth="2" />
-                        <text x="290" y="75" textAnchor="middle" className="fill-white text-xs font-medium">Database</text>
-                        <text x="290" y="90" textAnchor="middle" className="fill-white text-xs">Setup Data</text>
-                        
-                        {/* Webhook Integration */}
-                        <rect x="520" y="50" width="100" height="60" rx="8" fill="#10b981" stroke="#059669" strokeWidth="2" />
-                        <text x="570" y="75" textAnchor="middle" className="fill-white text-xs font-medium">Webhook</text>
-                        <text x="570" y="90" textAnchor="middle" className="fill-white text-xs">Trigger Event</text>
-                        
-                        {/* Data Processing */}
-                        <rect x="640" y="160" width="100" height="60" rx="8" fill="#f59e0b" stroke="#d97706" strokeWidth="2" />
-                        <text x="690" y="185" textAnchor="middle" className="fill-white text-xs font-medium">Process</text>
-                        <text x="690" y="200" textAnchor="middle" className="fill-white text-xs">Customer Data</text>
-                        
-                        {/* Validation Step */}
-                        <rect x="520" y="210" width="100" height="60" rx="8" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="2" />
-                        <text x="570" y="235" textAnchor="middle" className="fill-white text-xs font-medium">Validate</text>
-                        <text x="570" y="250" textAnchor="middle" className="fill-white text-xs">Information</text>
-                        
-                        {/* Manual Review */}
-                        <rect x="240" y="210" width="100" height="60" rx="8" fill="#ef4444" stroke="#dc2626" strokeWidth="2" />
-                        <text x="290" y="235" textAnchor="middle" className="fill-white text-xs font-medium">Manual</text>
-                        <text x="290" y="250" textAnchor="middle" className="fill-white text-xs">Review</text>
-                        
-                        {/* Complete Node */}
-                        <circle cx="160" cy="340" r="30" fill="#059669" stroke="#047857" strokeWidth="2" />
-                        <text x="160" y="346" textAnchor="middle" className="fill-white text-sm font-medium">DONE</text>
-                      </svg>
-                      
-                      {/* Integration Legend */}
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                          <span className="text-muted-foreground">Database Integration</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded"></div>
-                          <span className="text-muted-foreground">Webhook/API</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                          <span className="text-muted-foreground">Data Processing</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                          <span className="text-muted-foreground">Validation/Logic</span>
-                        </div>
+                    {/* Integration Legend - More comprehensive */}
+                    <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                        <span className="text-muted-foreground">Database Operations</span>
                       </div>
-                      
-                      {/* Workflow Steps Summary */}
-                      <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded border">
-                        <h4 className="text-sm font-medium mb-2">Workflow Steps:</h4>
-                        <ol className="text-xs text-muted-foreground space-y-1">
-                          <li>1. Initialize workflow and setup database connection</li>
-                          <li>2. Trigger webhook event and capture customer data</li>
-                          <li>3. Process and transform the captured information</li>
-                          <li>4. Validate data against business rules</li>
-                          <li>5. Manual review for exceptions or edge cases</li>
-                          <li>6. Complete workflow and store final results</li>
-                        </ol>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-500 rounded"></div>
+                        <span className="text-muted-foreground">API/Webhook Integration</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                        <span className="text-muted-foreground">Data Processing</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                        <span className="text-muted-foreground">Validation/Logic</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-500 rounded"></div>
+                        <span className="text-muted-foreground">Manual/Error Handling</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-emerald-600 rounded-full"></div>
+                        <span className="text-muted-foreground">Start/End Points</span>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Instructions Tab */}
+            <TabsContent value="instructions" className="space-y-6 mt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-lg font-medium">Full Workflow Instructions</Label>
+                  <Button
+                    onClick={handleCopyInstructions}
+                    data-testid="copy-instructions-tab"
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy to Clipboard
+                  </Button>
+                </div>
+                <Textarea
+                  value={container.fullInstructions || container.description || 'No instructions available'}
+                  readOnly
+                  rows={15}
+                  className="text-sm bg-muted font-mono"
+                  data-testid="full-instructions-tab"
+                />
+                
+                {/* Workflow Steps Summary */}
+                <div className="mt-6 p-4 bg-white dark:bg-gray-800 rounded-lg border">
+                  <h4 className="text-lg font-medium mb-3">Workflow Implementation Steps:</h4>
+                  <ol className="text-sm text-muted-foreground space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">1.</span>
+                      Initialize workflow and setup database connection for product accounts
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-600 font-medium">2.</span>
+                      Configure webhook to trigger on customer signup events
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-600 font-medium">3.</span>
+                      Capture and process customer data from signup form
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-purple-600 font-medium">4.</span>
+                      Validate customer information against business rules
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-600 font-medium">5.</span>
+                      Manual review process for exceptions or complex cases
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-medium">6.</span>
+                      Complete workflow and store final customer profile
+                    </li>
+                  </ol>
+                </div>
               </div>
-              
-              {/* Workflow JSON (if available) */}
-              {parseWorkflowData().workflowJson && (
-                <div>
-                  <Label className="text-sm font-medium">Workflow Definition</Label>
+            </TabsContent>
+
+            {/* Configuration Tab */}
+            <TabsContent value="config" className="space-y-6 mt-6">
+              {parseWorkflowData().workflowJson ? (
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">Workflow JSON Configuration</Label>
                   <Textarea
                     value={parseWorkflowData().workflowJson}
                     readOnly
-                    rows={8}
-                    className="text-xs bg-muted font-mono mt-2"
-                    data-testid="workflow-json"
+                    rows={12}
+                    className="text-sm bg-muted font-mono"
+                    data-testid="workflow-json-tab"
                   />
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  <Label className="text-lg font-medium">Workflow Configuration</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Industry</Label>
+                      <div className="p-2 bg-muted rounded text-sm">{container.industry || 'Not specified'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Department</Label>
+                      <div className="p-2 bg-muted rounded text-sm">{container.department || 'Not specified'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Visibility</Label>
+                      <div className="p-2 bg-muted rounded text-sm">{container.visibility || 'Public'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Type</Label>
+                      <div className="p-2 bg-muted rounded text-sm">{container.type}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tags</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {container.tags?.map((tag, index) => (
+                        <Badge key={index} variant="secondary">{tag}</Badge>
+                      )) || <span className="text-sm text-muted-foreground">No tags</span>}
+                    </div>
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="flex justify-end gap-2 pt-4 border-t">
             <Button 
