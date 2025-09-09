@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit } from "lucide-react";
+import { Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit, Activity } from "lucide-react";
 import type { Container } from "@shared/schema";
 import UrlStatusIcon from "./UrlStatusIcon";
 
@@ -128,7 +128,7 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
         {/* App Metrics */}
         <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Download className="w-3 h-3" />
+            <Activity className="w-3 h-3" />
             <span>{Math.floor(Math.random() * 1000) + 100} installs</span>
           </div>
           <div className="flex items-center gap-1">
@@ -233,20 +233,30 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
                   </div>
                 )}
                 {iframeError ? (
-                  <div className="flex items-center justify-center h-full bg-muted text-muted-foreground">
-                    <div className="text-center max-w-md">
-                      <Monitor className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <h3 className="font-semibold mb-2">Can't display in preview</h3>
-                      <p className="text-sm mb-4">
-                        This app can't be embedded due to security restrictions or requires authentication.
-                      </p>
-                      <Button onClick={openInNewTab} className="mb-2">
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Open in New Tab
-                      </Button>
-                      <p className="text-xs text-muted-foreground">
-                        Opens the app in a new browser tab where it should work normally.
-                      </p>
+                  <div className="flex items-center justify-center h-full bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 text-muted-foreground">
+                    <div className="text-center max-w-lg p-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Monitor className="w-8 h-8 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <h3 className="font-semibold mb-3 text-lg text-foreground">Preview Not Available</h3>
+                      <div className="space-y-3 text-sm text-muted-foreground">
+                        <p className="font-medium text-orange-700 dark:text-orange-300">Why this happens:</p>
+                        <div className="text-left space-y-2 bg-white/60 dark:bg-gray-900/60 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                          <p>• <strong>Security Headers:</strong> The app blocks embedding to prevent clickjacking</p>
+                          <p>• <strong>Authentication:</strong> Login screens don't work in preview mode</p>
+                          <p>• <strong>HTTPS/SSL:</strong> Mixed content security restrictions</p>
+                        </div>
+                        <p className="text-center font-medium text-foreground">This is normal - most professional apps intentionally prevent embedding.</p>
+                      </div>
+                      <div className="mt-6 space-y-3">
+                        <Button onClick={openInNewTab} className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Open App in New Tab
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          The app will work normally in its own tab with full functionality.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -270,15 +280,17 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
               </div>
             )}
           </div>
-          <div className="flex justify-between items-center mt-4">
-            <p className="text-xs text-muted-foreground">
-              Having issues? Try opening in a new tab for full functionality.
-            </p>
-            <Button variant="outline" size="sm" onClick={openInNewTab}>
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Open in New Tab
-            </Button>
-          </div>
+          {!iframeError && (
+            <div className="flex justify-between items-center mt-4">
+              <p className="text-xs text-muted-foreground">
+                💡 For best experience, try opening in a new tab if preview seems limited.
+              </p>
+              <Button variant="outline" size="sm" onClick={openInNewTab}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Open in New Tab
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
