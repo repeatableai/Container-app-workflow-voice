@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Download, Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit } from "lucide-react";
+import { Eye, ExternalLink, Star, Users, Calendar, Monitor, Edit } from "lucide-react";
 import type { Container } from "@shared/schema";
 import UrlStatusIcon from "./UrlStatusIcon";
 
@@ -20,19 +20,11 @@ interface AppCardProps {
 }
 
 export default function AppCard({ container, onView, onDelete, onEdit, canDelete, canEdit = true }: AppCardProps) {
-  const [isInstalling, setIsInstalling] = useState(false);
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [iframeLoading, setIframeLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const handleInstall = async () => {
-    setIsInstalling(true);
-    // Simulate installation process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsInstalling(false);
-    onView(container.id);
-  };
 
   const handleViewApp = () => {
     onView(container.id);
