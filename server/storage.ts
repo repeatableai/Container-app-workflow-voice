@@ -324,6 +324,25 @@ export class DatabaseStorage implements IStorage {
     
     return result.map(r => ({ name: r.department!, count: r.count })).filter(item => item.name);
   }
+
+  async getUseCasesWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    let whereConditions = [sql`${containers.useCase} IS NOT NULL`, eq(containers.isMarketplace, true)];
+    
+    if (type) {
+      whereConditions.push(eq(containers.type, type as 'app' | 'voice' | 'workflow'));
+    }
+    
+    const result = await db
+      .select({
+        useCase: containers.useCase,
+        count: sql<number>`count(*)`
+      })
+      .from(containers)
+      .where(and(...whereConditions))
+      .groupBy(containers.useCase);
+    
+    return result.map(r => ({ name: r.useCase!, count: r.count })).filter(item => item.name);
+  }
   
   // Company operations
   async getCompany(id: string): Promise<Company | undefined> {

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 
 interface SidebarProps {
@@ -20,9 +19,6 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
   const [expandedSections, setExpandedSections] = useState({
     industries: true,
     departments: true,
-    containerTypes: true,
-    accessLevels: true,
-    categories: true,
     useCases: true,
   });
 
@@ -49,73 +45,16 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
     retry: false,
   });
 
-  // Dynamic filter categories based on active tab
-  const getFilterCategories = () => {
-    switch (activeTab) {
-      case 'app':
-        return {
-          types: [
-            { id: 'web', label: 'Web Application' },
-            { id: 'mobile', label: 'Mobile App' },
-            { id: 'desktop', label: 'Desktop Software' },
-            { id: 'api', label: 'API Service' },
-          ],
-          categories: [
-            { id: 'productivity', label: 'Productivity' },
-            { id: 'communication', label: 'Communication' },
-            { id: 'analytics', label: 'Analytics' },
-            { id: 'security', label: 'Security' },
-          ]
-        };
-      case 'voice':
-        return {
-          types: [
-            { id: 'healthcare', label: 'Healthcare' },
-            { id: 'finance', label: 'Finance' },
-            { id: 'education', label: 'Education' },
-            { id: 'retail', label: 'Retail' },
-            { id: 'technology', label: 'Technology' },
-          ],
-          categories: [
-            { id: 'sales', label: 'Sales' },
-            { id: 'marketing', label: 'Marketing' },
-            { id: 'support', label: 'Customer Support' },
-            { id: 'training', label: 'Training' },
-            { id: 'hr', label: 'Human Resources' },
-          ],
-          useCases: [
-            { id: 'ivr', label: 'IVR Systems' },
-            { id: 'appointment', label: 'Appointment Booking' },
-            { id: 'survey', label: 'Survey & Feedback' },
-            { id: 'sales-demo', label: 'Sales Demo' },
-            { id: 'onboarding', label: 'Employee Onboarding' },
-          ]
-        };
-      default:
-        return {
-          types: [
-            { id: 'automation', label: 'Automation' },
-            { id: 'integration', label: 'Integration' },
-            { id: 'data-processing', label: 'Data Processing' },
-            { id: 'notification', label: 'Notification' },
-          ],
-          categories: [
-            { id: 'operations', label: 'Operations' },
-            { id: 'hr', label: 'Human Resources' },
-            { id: 'finance', label: 'Finance' },
-            { id: 'marketing', label: 'Marketing' },
-          ]
-        };
-    }
-  };
-
-  const filterCategories = getFilterCategories();
-  
-  const accessLevels = [
-    { id: 'public', label: 'Public' },
-    { id: 'restricted', label: 'Restricted' },
-    { id: 'admin_only', label: 'Admin Only' },
-  ];
+  const { data: useCases = [] } = useQuery<{ name: string; count: number }[]>({
+    queryKey: ['/api/filters/usecases', activeTab],
+    queryFn: async () => {
+      const response = await fetch(`/api/filters/usecases?type=${activeTab}`, {
+        credentials: 'include'
+      });
+      return response.json();
+    },
+    retry: false,
+  });
 
   const handleClearAll = () => {
     onFiltersChange({
@@ -197,17 +136,17 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
               className="flex items-center justify-between w-full text-left"
               onClick={() => toggleSection('industries')}
             >
-              <h4 className="text-sm font-medium text-foreground">Industries</h4>
+              <h4 className="text-sm font-medium text-foreground">Industry</h4>
               <i className={`fas fa-chevron-${expandedSections.industries ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
             </button>
             {expandedSections.industries && (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {industries.length === 0 ? (
                   <div className="text-xs text-muted-foreground">No industries found</div>
                 ) : (
                   industries.map((industry) => (
                     <div key={industry.name} className="flex items-center justify-between space-x-2">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
                         <Checkbox 
                           id={`industry-${industry.name}`}
                           checked={filters.industries.includes(industry.name)}
@@ -216,12 +155,12 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                         />
                         <label 
                           htmlFor={`industry-${industry.name}`} 
-                          className="text-sm text-muted-foreground cursor-pointer"
+                          className="text-sm text-muted-foreground cursor-pointer truncate"
                         >
                           {industry.name}
                         </label>
                       </div>
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full flex-shrink-0">
                         {industry.count}
                       </span>
                     </div>
@@ -237,17 +176,17 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
               className="flex items-center justify-between w-full text-left"
               onClick={() => toggleSection('departments')}
             >
-              <h4 className="text-sm font-medium text-foreground">Departments</h4>
+              <h4 className="text-sm font-medium text-foreground">Department</h4>
               <i className={`fas fa-chevron-${expandedSections.departments ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
             </button>
             {expandedSections.departments && (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {departments.length === 0 ? (
                   <div className="text-xs text-muted-foreground">No departments found</div>
                 ) : (
                   departments.map((department) => (
                     <div key={department.name} className="flex items-center justify-between space-x-2">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
                         <Checkbox 
                           id={`department-${department.name}`}
                           checked={filters.departments.includes(department.name)}
@@ -256,12 +195,12 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
                         />
                         <label 
                           htmlFor={`department-${department.name}`} 
-                          className="text-sm text-muted-foreground cursor-pointer"
+                          className="text-sm text-muted-foreground cursor-pointer truncate"
                         >
                           {department.name}
                         </label>
                       </div>
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full flex-shrink-0">
                         {department.count}
                       </span>
                     </div>
@@ -271,130 +210,42 @@ export default function Sidebar({ filters, onFiltersChange, activeTab = 'app' }:
             )}
           </div>
 
-          {/* Dynamic Types */}
+          {/* Use Cases */}
           <div className="space-y-3">
             <button 
               className="flex items-center justify-between w-full text-left"
-              onClick={() => toggleSection('containerTypes')}
+              onClick={() => toggleSection('useCases')}
             >
-              <h4 className="text-sm font-medium text-foreground">
-                {activeTab === 'app' ? 'App Type' : activeTab === 'voice' ? 'Industry' : 'Workflow Type'}
-              </h4>
-              <i className={`fas fa-chevron-${expandedSections.containerTypes ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
+              <h4 className="text-sm font-medium text-foreground">Use Case</h4>
+              <i className={`fas fa-chevron-${expandedSections.useCases ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
             </button>
-            {expandedSections.containerTypes && (
-              <div className="space-y-2">
-                {filterCategories.types.map((type: { id: string; label: string }) => (
-                  <div key={type.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`type-${type.id}`}
-                      checked={filters.containerTypes.includes(type.id)}
-                      onCheckedChange={(checked) => handleFilterChange('containerTypes', type.id, !!checked)}
-                      data-testid={`filter-type-${type.id}`}
-                    />
-                    <label 
-                      htmlFor={`type-${type.id}`} 
-                      className="text-sm text-muted-foreground cursor-pointer"
-                    >
-                      {type.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Dynamic Categories */}
-          <div className="space-y-3">
-            <button 
-              className="flex items-center justify-between w-full text-left"
-              onClick={() => toggleSection('categories')}
-            >
-              <h4 className="text-sm font-medium text-foreground">Categories</h4>
-              <i className={`fas fa-chevron-${expandedSections.categories ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
-            </button>
-            {expandedSections.categories && (
-              <div className="space-y-2">
-                {filterCategories.categories.map((category: { id: string; label: string }) => (
-                  <div key={category.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`category-${category.id}`}
-                      checked={filters.containerTypes.includes(category.id)}
-                      onCheckedChange={(checked) => handleFilterChange('containerTypes', category.id, !!checked)}
-                      data-testid={`filter-category-${category.id}`}
-                    />
-                    <label 
-                      htmlFor={`category-${category.id}`} 
-                      className="text-sm text-muted-foreground cursor-pointer"
-                    >
-                      {category.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Use Cases (Voice only) */}
-          {activeTab === 'voice' && filterCategories.useCases && (
-            <div className="space-y-3">
-              <button 
-                className="flex items-center justify-between w-full text-left"
-                onClick={() => toggleSection('useCases')}
-              >
-                <h4 className="text-sm font-medium text-foreground">Use Cases</h4>
-                <i className={`fas fa-chevron-${expandedSections.useCases ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
-              </button>
-              {expandedSections.useCases && (
-                <div className="space-y-2">
-                  {filterCategories.useCases?.map((useCase: { id: string; label: string }) => (
-                    <div key={useCase.id} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`usecase-${useCase.id}`}
-                        checked={filters.containerTypes.includes(useCase.id)}
-                        onCheckedChange={(checked) => handleFilterChange('containerTypes', useCase.id, !!checked)}
-                        data-testid={`filter-usecase-${useCase.id}`}
-                      />
-                      <label 
-                        htmlFor={`usecase-${useCase.id}`} 
-                        className="text-sm text-muted-foreground cursor-pointer"
-                      >
-                        {useCase.label}
-                      </label>
+            {expandedSections.useCases && (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {useCases.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">No use cases found</div>
+                ) : (
+                  useCases.map((useCase) => (
+                    <div key={useCase.name} className="flex items-center justify-between space-x-2">
+                      <div className="flex items-center space-x-2 min-w-0 flex-1">
+                        <Checkbox 
+                          id={`usecase-${useCase.name}`}
+                          checked={filters.containerTypes.includes(useCase.name)}
+                          onCheckedChange={(checked) => handleFilterChange('containerTypes', useCase.name, !!checked)}
+                          data-testid={`filter-usecase-${useCase.name}`}
+                        />
+                        <label 
+                          htmlFor={`usecase-${useCase.name}`} 
+                          className="text-sm text-muted-foreground cursor-pointer truncate"
+                        >
+                          {useCase.name}
+                        </label>
+                      </div>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full flex-shrink-0">
+                        {useCase.count}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Access Levels */}
-          <div className="space-y-3">
-            <button 
-              className="flex items-center justify-between w-full text-left"
-              onClick={() => toggleSection('accessLevels')}
-            >
-              <h4 className="text-sm font-medium text-foreground">Access Level</h4>
-              <i className={`fas fa-chevron-${expandedSections.accessLevels ? 'up' : 'down'} text-xs text-muted-foreground`}></i>
-            </button>
-            {expandedSections.accessLevels && (
-              <div className="space-y-2">
-                {accessLevels.map((level) => (
-                  <div key={level.id} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`access-${level.id}`}
-                      checked={filters.accessLevels.includes(level.id)}
-                      onCheckedChange={(checked) => handleFilterChange('accessLevels', level.id, !!checked)}
-                      data-testid={`filter-access-${level.id}`}
-                    />
-                    <label 
-                      htmlFor={`access-${level.id}`} 
-                      className="text-sm text-muted-foreground cursor-pointer"
-                    >
-                      {level.label}
-                    </label>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>

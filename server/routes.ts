@@ -769,6 +769,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/filters/usecases', isAuthenticated, async (req: any, res) => {
+    try {
+      const { type } = req.query;
+      const useCases = await storage.getUseCasesWithCounts(type as string);
+      res.json(useCases);
+    } catch (error) {
+      console.error("Error fetching use cases:", error);
+      res.status(500).json({ message: "Failed to fetch use cases" });
+    }
+  });
+
   // Company container routes
   app.get('/api/company/containers', isAuthenticated, async (req: any, res) => {
     try {
