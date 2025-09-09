@@ -464,15 +464,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
 
             {/* Visual Workflow Tab */}
             <TabsContent value="visual" className="mt-6">
-              {parseWorkflowData().visualFlow ? (
-                /* JSONL Visual Flow */
-                <div className="bg-muted rounded-lg p-6">
-                  <pre className="text-sm whitespace-pre-wrap font-mono text-muted-foreground">
-                    {parseWorkflowData().visualFlow}
-                  </pre>
-                </div>
-              ) : (
-                /* Lindy.ai Style Professional Flowchart */
+              {/* Always Show Lindy.ai Style Professional Flowchart */}
                 <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
                   {/* Subtle Grid Background - Lindy.ai Style */}
                   <div 
@@ -663,7 +655,6 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                     </div>
                   </div>
                 </div>
-              )}
             </TabsContent>
 
             {/* Instructions Tab */}
