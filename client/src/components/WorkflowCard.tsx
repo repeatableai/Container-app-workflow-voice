@@ -21,6 +21,185 @@ interface WorkflowCardProps {
   canEdit?: boolean;
 }
 
+interface WorkflowStep {
+  id: number;
+  name: string;
+  description: string;
+  type: string;
+}
+
+interface DynamicWorkflowCanvasProps {
+  steps: WorkflowStep[];
+  containerId: string;
+}
+
+const getStepColor = (type: string) => {
+  switch (type) {
+    case 'trigger': return { bg: '#10b981', border: '#059669' };
+    case 'validation': return { bg: '#06b6d4', border: '#0891b2' };
+    case 'data': return { bg: '#3b82f6', border: '#2563eb' };
+    case 'action': return { bg: '#ec4899', border: '#db2777' };
+    case 'error': return { bg: '#ef4444', border: '#dc2626' };
+    case 'complete': return { bg: '#059669', border: '#047857' };
+    case 'review': return { bg: '#eab308', border: '#ca8a04' };
+    default: return { bg: '#8b5cf6', border: '#7c3aed' };
+  }
+};
+
+const getStepIcon = (type: string) => {
+  switch (type) {
+    case 'trigger': return '⚡';
+    case 'validation': return '✓';
+    case 'data': return '🗄️';
+    case 'action': return '📧';
+    case 'error': return '⚠️';
+    case 'complete': return '✅';
+    case 'review': return '👁️';
+    default: return '🔧';
+  }
+};
+
+function DynamicWorkflowCanvas({ steps, containerId }: DynamicWorkflowCanvasProps) {
+  const stepWidth = 160;
+  const stepHeight = 60;
+  const startX = 100;
+  const stepGap = 180;
+  const viewBoxWidth = Math.max(800, startX + (steps.length * stepGap) + 200);
+
+  return (
+    <div className="relative z-10">
+      <svg viewBox={`0 0 ${viewBoxWidth} 400`} className="w-full h-[350px]">
+        {/* Arrow Marker Definition */}
+        <defs>
+          <marker id={`arrowhead-${containerId}`} markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
+          </marker>
+        </defs>
+        
+        {/* Connection Lines */}
+        {steps.map((step: WorkflowStep, index: number) => {
+          if (index === steps.length - 1) return null;
+          const x1 = startX + (index * stepGap) + stepWidth;
+          const x2 = startX + ((index + 1) * stepGap);
+          return (
+            <line 
+              key={`line-${index}`}
+              x1={x1} 
+              y1="80" 
+              x2={x2} 
+              y2="80" 
+              stroke="#059669" 
+              strokeWidth="3" 
+              markerEnd={`url(#arrowhead-${containerId})`} 
+            />
+          );
+        })}
+        
+        {/* START Node */}
+        <circle cx="50" cy="80" r="30" fill="#059669" stroke="#047857" strokeWidth="3" />
+        <text x="50" y="86" textAnchor="middle" className="fill-white text-sm font-bold">START</text>
+        
+        {/* Dynamic Steps */}
+        {steps.map((step: WorkflowStep, index: number) => {
+          const x = startX + (index * stepGap);
+          const y = 50;
+          const colors = getStepColor(step.type);
+          const icon = getStepIcon(step.type);
+          
+          return (
+            <g key={step.id}>
+              {/* Step Rectangle */}
+              <rect 
+                x={x} 
+                y={y} 
+                width={stepWidth} 
+                height={stepHeight} 
+                rx="8" 
+                fill={colors.bg} 
+                stroke={colors.border} 
+                strokeWidth="2" 
+              />
+              
+              {/* Icon Background */}
+              <rect 
+                x={x + 10} 
+                y={y + 5} 
+                width="20" 
+                height="20" 
+                rx="3" 
+                fill="rgba(255,255,255,0.2)" 
+              />
+              
+              {/* Icon */}
+              <text 
+                x={x + 20} 
+                y={y + 18} 
+                textAnchor="middle" 
+                className="fill-white text-xs"
+              >
+                {icon}
+              </text>
+              
+              {/* Step Name */}
+              <text 
+                x={x + stepWidth/2} 
+                y={y + 25} 
+                textAnchor="middle" 
+                className="fill-white text-sm font-medium"
+              >
+                {step.name.length > 15 ? step.name.substring(0, 15) + '...' : step.name}
+              </text>
+              
+              {/* Step Description */}
+              {step.description && (
+                <text 
+                  x={x + stepWidth/2} 
+                  y={y + 40} 
+                  textAnchor="middle" 
+                  className="fill-white text-xs"
+                >
+                  {step.description.length > 20 ? step.description.substring(0, 20) + '...' : step.description}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        
+        {/* FINISH Node */}
+        <circle 
+          cx={startX + (steps.length * stepGap) + 50} 
+          cy="80" 
+          r="30" 
+          fill="#059669" 
+          stroke="#047857" 
+          strokeWidth="3" 
+        />
+        <text 
+          x={startX + (steps.length * stepGap) + 50} 
+          y="86" 
+          textAnchor="middle" 
+          className="fill-white text-sm font-bold"
+        >
+          FINISH
+        </text>
+        
+        {/* Connection from last step to FINISH */}
+        {steps.length > 0 && (
+          <line 
+            x1={startX + ((steps.length - 1) * stepGap) + stepWidth} 
+            y1="80" 
+            x2={startX + (steps.length * stepGap) + 20} 
+            y2="80" 
+            stroke="#059669" 
+            strokeWidth="3" 
+            markerEnd={`url(#arrowhead-${containerId})`} 
+          />
+        )}
+      </svg>
+    </div>
+  );
+}
+
 export default function WorkflowCard({ container, onView, onDelete, onEdit, canDelete, canEdit = true }: WorkflowCardProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [lastRun, setLastRun] = useState<Date | null>(null);
@@ -132,6 +311,101 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     };
   };
 
+  const extractWorkflowSteps = () => {
+    const workflowData = parseWorkflowData();
+    
+    // Try to extract steps from different sources
+    let steps = [];
+    
+    if (workflowData.workflowJson) {
+      // Parse Workflow_JSON if available
+      try {
+        const jsonWorkflow = JSON.parse(workflowData.workflowJson);
+        if (jsonWorkflow.steps || jsonWorkflow.actions) {
+          steps = jsonWorkflow.steps || jsonWorkflow.actions;
+        }
+      } catch (error) {
+        console.log('Could not parse workflow JSON');
+      }
+    }
+    
+    if (steps.length === 0 && workflowData.visualFlow) {
+      // Extract steps from Visual_Flowchart text
+      const flowText = workflowData.visualFlow;
+      const lines = flowText.split('\n').filter((line: string) => line.trim());
+      
+      steps = lines
+        .filter((line: string) => 
+          line.includes('→') || 
+          line.includes('->') || 
+          line.match(/^\d+\./) ||
+          line.includes('Step') ||
+          line.includes(':')
+        )
+        .map((line: string, index: number) => ({
+          id: index + 1,
+          name: line.replace(/^\d+\.|\→|\-\>/g, '').trim().split(':')[0].trim(),
+          description: line.includes(':') ? line.split(':')[1]?.trim() : '',
+          type: getStepType(line)
+        }))
+        .slice(0, 8); // Limit to 8 steps for visual clarity
+    }
+    
+    if (steps.length === 0) {
+      // Extract steps from description text
+      const description = workflowData.description || container.description || '';
+      const sentences = description.split(/[.!?]/).filter((s: string) => s.trim().length > 10);
+      
+      steps = sentences.slice(0, 6).map((sentence: string, index: number) => ({
+        id: index + 1,
+        name: sentence.trim().substring(0, 30) + (sentence.length > 30 ? '...' : ''),
+        description: sentence.trim(),
+        type: getStepType(sentence)
+      }));
+    }
+    
+    // Fallback to generic steps based on title/type
+    if (steps.length === 0) {
+      const title = workflowData.title.toLowerCase();
+      if (title.includes('email') || title.includes('marketing')) {
+        steps = [
+          { id: 1, name: 'Trigger Event', description: 'Workflow activation', type: 'trigger' },
+          { id: 2, name: 'Collect Data', description: 'Gather information', type: 'data' },
+          { id: 3, name: 'Send Email', description: 'Marketing campaign', type: 'action' },
+          { id: 4, name: 'Complete', description: 'Workflow finished', type: 'complete' }
+        ];
+      } else if (title.includes('customer') || title.includes('user')) {
+        steps = [
+          { id: 1, name: 'Customer Event', description: 'User interaction', type: 'trigger' },
+          { id: 2, name: 'Validate Data', description: 'Check information', type: 'validation' },
+          { id: 3, name: 'Update Records', description: 'Save to database', type: 'data' },
+          { id: 4, name: 'Send Notification', description: 'Alert stakeholders', type: 'action' }
+        ];
+      } else {
+        steps = [
+          { id: 1, name: 'Start Process', description: 'Initialize workflow', type: 'trigger' },
+          { id: 2, name: 'Process Data', description: 'Handle information', type: 'data' },
+          { id: 3, name: 'Execute Action', description: 'Perform main task', type: 'action' },
+          { id: 4, name: 'Finish', description: 'Complete workflow', type: 'complete' }
+        ];
+      }
+    }
+    
+    return steps;
+  };
+
+  const getStepType = (text: string) => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('trigger') || lowerText.includes('start') || lowerText.includes('webhook')) return 'trigger';
+    if (lowerText.includes('validate') || lowerText.includes('check') || lowerText.includes('verify')) return 'validation';
+    if (lowerText.includes('database') || lowerText.includes('save') || lowerText.includes('store')) return 'data';
+    if (lowerText.includes('email') || lowerText.includes('send') || lowerText.includes('notify')) return 'action';
+    if (lowerText.includes('error') || lowerText.includes('fail') || lowerText.includes('exception')) return 'error';
+    if (lowerText.includes('complete') || lowerText.includes('finish') || lowerText.includes('end')) return 'complete';
+    if (lowerText.includes('review') || lowerText.includes('manual') || lowerText.includes('approve')) return 'review';
+    return 'process';
+  };
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return 'Never';
     const d = new Date(date);
@@ -185,7 +459,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </Badge>
             <UrlStatusIcon 
               status={container.urlStatus} 
-              lastChecked={container.urlLastChecked} 
+              lastChecked={container.urlLastChecked ? formatDate(container.urlLastChecked) : undefined} 
               error={container.urlCheckError} 
             />
           </div>
@@ -465,178 +739,69 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             {/* Visual Workflow Tab */}
             <TabsContent value="visual" className="mt-6">
               {/* Always Show Lindy.ai Style Professional Flowchart */}
-                <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
-                  {/* Subtle Grid Background - Lindy.ai Style */}
-                  <div 
-                    className="absolute inset-0 opacity-10 dark:opacity-20" 
-                    style={{
-                      backgroundImage: `
-                        linear-gradient(rgba(100,116,139,0.3) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(100,116,139,0.3) 1px, transparent 1px)
-                      `,
-                      backgroundSize: '20px 20px'
-                    }}
-                  />
+              <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                {/* Subtle Grid Background - Lindy.ai Style */}
+                <div 
+                  className="absolute inset-0 opacity-10 dark:opacity-20" 
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(rgba(100,116,139,0.3) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(100,116,139,0.3) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '20px 20px'
+                  }}
+                />
+                
+                {/* Dynamic Workflow Canvas */}
+                <DynamicWorkflowCanvas 
+                  steps={extractWorkflowSteps()} 
+                  containerId={container.id}
+                />
+                
+                {/* Clear Flow Legend */}
+                <div className="mt-8 space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-600 rounded-full border-2 border-green-800"></div>
+                      <span className="font-medium">START</span>
+                    </div>
+                    <div className="flex-1 mx-4 border-t-2 border-green-600 border-dashed"></div>
+                    <div className="text-xs text-muted-foreground">Flow Direction →</div>
+                    <div className="flex-1 mx-4 border-t-2 border-green-600 border-dashed"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-600 rounded-full border-2 border-green-800"></div>
+                      <span className="font-medium">FINISH</span>
+                    </div>
+                  </div>
                   
-                  {/* Workflow Canvas - Clear Flow with Start/Finish */}
-                  <div className="relative z-10">
-                    <svg viewBox="0 0 1200 700" className="w-full h-[450px]">
-                      {/* Arrow Marker Definition */}
-                      <defs>
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                          <polygon points="0 0, 10 3.5, 0 7" fill="#059669" />
-                        </marker>
-                        <marker id="errorArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                          <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626" />
-                        </marker>
-                      </defs>
-                      
-                      {/* Main Flow Path - Left to Right with Clear Direction */}
-                      <line x1="120" y1="80" x2="280" y2="80" stroke="#059669" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="400" y1="80" x2="560" y2="80" stroke="#059669" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="680" y1="80" x2="840" y2="80" stroke="#059669" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      <line x1="960" y1="80" x2="1080" y2="80" stroke="#059669" strokeWidth="3" markerEnd="url(#arrowhead)" />
-                      
-                      {/* Secondary Flow Paths */}
-                      <line x1="340" y1="110" x2="340" y2="170" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      <line x1="340" y1="230" x2="340" y2="290" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      <line x1="400" y1="320" x2="560" y2="320" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      <line x1="680" y1="320" x2="840" y2="320" stroke="#3b82f6" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      
-                      {/* Error Handling Path */}
-                      <line x1="340" y1="350" x2="340" y2="410" stroke="#dc2626" strokeWidth="2" markerEnd="url(#errorArrow)" />
-                      
-                      {/* Completion Paths */}
-                      <line x1="900" y1="110" x2="900" y2="170" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      <line x1="900" y1="230" x2="900" y2="290" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      <line x1="960" y1="320" x2="1080" y2="320" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowhead)" />
-                      
-                      {/* START NODE - Prominent Green Circle */}
-                      <circle cx="60" cy="80" r="40" fill="#059669" stroke="#047857" strokeWidth="3" />
-                      <text x="60" y="86" textAnchor="middle" className="fill-white text-sm font-bold">START</text>
-                      
-                      {/* Step 1: Webhook Trigger */}
-                      <rect x="260" y="50" width="160" height="60" rx="8" fill="#10b981" stroke="#059669" strokeWidth="2" />
-                      <rect x="270" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="280" y="68" textAnchor="middle" className="fill-white text-xs">⚡</text>
-                      <text x="320" y="70" className="fill-white text-sm font-medium">Webhook</text>
-                      <text x="320" y="85" className="fill-white text-xs">Customer Event</text>
-                      <text x="320" y="100" className="fill-white text-xs">Reception</text>
-                      
-                      {/* Step 2: Capture Data */}
-                      <rect x="260" y="180" width="160" height="60" rx="8" fill="#3b82f6" stroke="#2563eb" strokeWidth="2" />
-                      <rect x="270" y="185" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="280" y="198" textAnchor="middle" className="fill-white text-xs">📥</text>
-                      <text x="320" y="200" className="fill-white text-sm font-medium">Capture</text>
-                      <text x="320" y="215" className="fill-white text-xs">Event Information</text>
-                      <text x="320" y="230" className="fill-white text-xs">Data Structure</text>
-                      
-                      {/* Step 3: Parse Data */}
-                      <rect x="260" y="310" width="160" height="60" rx="8" fill="#8b5cf6" stroke="#7c3aed" strokeWidth="2" />
-                      <rect x="270" y="315" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="280" y="328" textAnchor="middle" className="fill-white text-xs">🔧</text>
-                      <text x="320" y="330" className="fill-white text-sm font-medium">Parse</text>
-                      <text x="320" y="345" className="fill-white text-xs">Customer Data</text>
-                      <text x="320" y="360" className="fill-white text-xs">Fields</text>
-                      
-                      {/* Error Handling */}
-                      <rect x="260" y="440" width="160" height="60" rx="8" fill="#ef4444" stroke="#dc2626" strokeWidth="2" />
-                      <rect x="270" y="445" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="280" y="458" textAnchor="middle" className="fill-white text-xs">⚠️</text>
-                      <text x="320" y="460" className="fill-white text-sm font-medium">Error</text>
-                      <text x="320" y="475" className="fill-white text-xs">Exception Handler</text>
-                      <text x="320" y="490" className="fill-white text-xs">Fallback Logic</text>
-                      
-                      {/* Step 4: Validate & Process */}
-                      <rect x="540" y="50" width="160" height="60" rx="8" fill="#06b6d4" stroke="#0891b2" strokeWidth="2" />
-                      <rect x="550" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="560" y="68" textAnchor="middle" className="fill-white text-xs">✓</text>
-                      <text x="600" y="70" className="fill-white text-sm font-medium">Validate</text>
-                      <text x="600" y="85" className="fill-white text-xs">Customer Data</text>
-                      <text x="600" y="100" className="fill-white text-xs">Format & Rules</text>
-                      
-                      {/* Step 5: Database Operations */}
-                      <rect x="540" y="290" width="160" height="60" rx="8" fill="#1e40af" stroke="#1d4ed8" strokeWidth="2" />
-                      <rect x="550" y="295" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="560" y="308" textAnchor="middle" className="fill-white text-xs">🗄️</text>
-                      <text x="600" y="310" className="fill-white text-sm font-medium">Database</text>
-                      <text x="600" y="325" className="fill-white text-xs">Save Customer</text>
-                      <text x="600" y="340" className="fill-white text-xs">Record</text>
-                      
-                      {/* Step 6: Marketing Actions */}
-                      <rect x="820" y="50" width="160" height="60" rx="8" fill="#ec4899" stroke="#db2777" strokeWidth="2" />
-                      <rect x="830" y="55" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="840" y="68" textAnchor="middle" className="fill-white text-xs">📧</text>
-                      <text x="880" y="70" className="fill-white text-sm font-medium">Marketing</text>
-                      <text x="880" y="85" className="fill-white text-xs">Send Welcome</text>
-                      <text x="880" y="100" className="fill-white text-xs">Email Campaign</text>
-                      
-                      {/* Step 7: Process Review */}
-                      <rect x="820" y="180" width="160" height="60" rx="8" fill="#eab308" stroke="#ca8a04" strokeWidth="2" />
-                      <rect x="830" y="185" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="840" y="198" textAnchor="middle" className="fill-white text-xs">⏳</text>
-                      <text x="880" y="200" className="fill-white text-sm font-medium">Review</text>
-                      <text x="880" y="215" className="fill-white text-xs">Quality Check</text>
-                      <text x="880" y="230" className="fill-white text-xs">Manual Review</text>
-                      
-                      {/* Step 8: Final Actions */}
-                      <rect x="820" y="290" width="160" height="60" rx="8" fill="#059669" stroke="#047857" strokeWidth="2" />
-                      <rect x="830" y="295" width="20" height="20" rx="3" fill="rgba(255,255,255,0.2)" />
-                      <text x="840" y="308" textAnchor="middle" className="fill-white text-xs">💾</text>
-                      <text x="880" y="310" className="fill-white text-sm font-medium">Complete</text>
-                      <text x="880" y="325" className="fill-white text-xs">Save Audit Trail</text>
-                      <text x="880" y="340" className="fill-white text-xs">Log Final State</text>
-                      
-                      {/* FINISH NODE - Prominent Green Circle */}
-                      <circle cx="1140" cy="80" r="40" fill="#059669" stroke="#047857" strokeWidth="3" />
-                      <text x="1140" y="86" textAnchor="middle" className="fill-white text-sm font-bold">FINISH</text>
-                    </svg>
-                    
-                    {/* Clear Flow Legend */}
-                    <div className="mt-8 space-y-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-green-600 rounded-full border-2 border-green-800"></div>
-                          <span className="font-medium">START</span>
-                        </div>
-                        <div className="flex-1 mx-4 border-t-2 border-green-600 border-dashed"></div>
-                        <div className="text-xs text-muted-foreground">Flow Direction →</div>
-                        <div className="flex-1 mx-4 border-t-2 border-green-600 border-dashed"></div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 bg-green-600 rounded-full border-2 border-green-800"></div>
-                          <span className="font-medium">FINISH</span>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Webhook & Triggers</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Data Processing</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-cyan-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Validation & Logic</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-pink-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Marketing Actions</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-yellow-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Review & QA</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
-                          <span className="text-muted-foreground">Error Handling</span>
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Webhook & Triggers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Data Processing</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-cyan-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Validation & Logic</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-pink-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Marketing Actions</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Review & QA</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+                      <span className="text-muted-foreground">Error Handling</span>
                     </div>
                   </div>
                 </div>
+              </div>
             </TabsContent>
 
             {/* Instructions Tab */}
