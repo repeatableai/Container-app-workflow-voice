@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit, Expand, CheckCircle, ArrowRight, Database, MessageSquare, FileText, Eye, Code } from "lucide-react";
+import { Play, Pause, Settings, Copy, Clock, Zap, BarChart3, Workflow, ExternalLink, Monitor, Edit, Expand, CheckCircle, ArrowRight, Database, MessageSquare, FileText, Eye, Code, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -815,14 +815,13 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </div>
             <Button
               size="sm"
-              variant={isRunning ? "secondary" : "default"}
-              onClick={handleRunWorkflow}
-              disabled={isRunning}
-              className={!isRunning ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-              data-testid="run-workflow-button"
+              variant="outline"
+              onClick={handleViewWorkflow}
+              className="bg-white hover:bg-gray-50 text-gray-700 border-gray-200"
+              data-testid="expand-workflow-button"
             >
-              {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isRunning ? 'Running' : 'Run Now'}
+              <ChevronDown className="w-4 h-4 mr-2" />
+              Expand to view
             </Button>
           </div>
           

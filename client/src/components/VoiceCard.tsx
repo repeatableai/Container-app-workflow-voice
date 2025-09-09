@@ -186,15 +186,6 @@ export default function VoiceCard({ container, onView, onDelete, onEdit, canDele
 
         {/* Actions */}
         <div className="flex gap-2 pt-2 border-t border-orange-200 dark:border-orange-800">
-          <Button 
-            size="sm" 
-            className="flex-1 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white"
-            onClick={() => onView(container.id)}
-            data-testid="use-voice-button"
-          >
-            <Volume2 className="w-4 h-4 mr-2" />
-            Use Voice
-          </Button>
           {canEdit && (
             <Button 
               variant="outline" 
