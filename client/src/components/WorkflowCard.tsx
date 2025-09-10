@@ -465,6 +465,32 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   };
 
   // Parse JSON workflow structure from fullInstructions
+
+  // Calculate automation level based on step types
+  const getAutomationLevel = (): number => {
+    const { steps } = parseJSONWorkflow();
+    if (steps.length === 0) return 85; // fallback
+    
+    const manualSteps = steps.filter(step => step.isManual).length;
+    const automationPercentage = Math.round(((steps.length - manualSteps) / steps.length) * 100);
+    return Math.max(automationPercentage, 10); // minimum 10%
+  };
+
+  // Get actual step count from parsed workflow (moved earlier for reference)
+  const getWorkflowStepCount = (): number => {
+    try {
+      if (!container.fullInstructions) return 5;
+      const parsed = JSON.parse(container.fullInstructions);
+      const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+      if (workflowJSON.workflow_steps && Array.isArray(workflowJSON.workflow_steps)) {
+        return workflowJSON.workflow_steps.length;
+      }
+    } catch (error) {
+      console.log("Could not parse step count:", error);
+    }
+    return 5; // fallback
+  };
+
   const parseJSONWorkflow = (): { steps: WorkflowStep[], paths: WorkflowPath[] } => {
     if (!container.fullInstructions) {
       return { steps: [], paths: [] };
@@ -917,7 +943,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded text-xs">
             <div className="font-medium text-green-700 dark:text-green-300">Steps</div>
-            <div className="text-muted-foreground">{workflowStats.steps} actions</div>
+            <div className="text-muted-foreground">{getWorkflowStepCount()} actions</div>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-900/30 p-2 rounded text-xs">
             <div className="font-medium text-emerald-700 dark:text-emerald-300">Avg Duration</div>
@@ -1011,11 +1037,14 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
 
       {/* Expanded View Modal with Tabs */}
       <Dialog open={showExpandedView} onOpenChange={setShowExpandedView}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-background z-10 pb-4 border-b">
             <DialogTitle className="flex items-center gap-2">
               <Workflow className="w-5 h-5" />
               {parseWorkflowData().isJsonl ? parseWorkflowData().title : container.title}
+              <Badge variant="outline" className="ml-auto">
+                {getWorkflowStepCount()} Steps • {getAutomationLevel()}% Automated
+              </Badge>
             </DialogTitle>
           </DialogHeader>
           
@@ -1094,7 +1123,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </TabsContent>
 
             {/* Visual Workflow Tab */}
-            <TabsContent value="visual" className="mt-6">
+            <TabsContent value="visual" className="mt-6 max-h-[500px] overflow-auto">
               {/* Always Show Lindy.ai Style Professional Flowchart */}
               <div className="bg-white dark:bg-gray-900 rounded-lg p-6 border border-gray-200 dark:border-gray-700 relative overflow-hidden">
                 {/* Subtle Grid Background - Lindy.ai Style */}
@@ -1114,6 +1143,32 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                   workflowData={analyzeWorkflowComplexity()} 
                   containerId={container.id}
                 />
+                
+                {/* Workflow Legend */}
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-blue-500"></div>
+                      Trigger
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-green-500"></div>
+                      Process
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-yellow-500"></div>
+                      Decision
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-purple-500"></div>
+                      Integration
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded bg-red-500"></div>
+                      Manual
+                    </span>
+                  </div>
+                </div>
                 
                 {/* Clear Flow Legend */}
                 <div className="mt-8 space-y-4">
@@ -1162,13 +1217,13 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             </TabsContent>
 
             {/* Instructions Tab */}
-            <TabsContent value="instructions" className="space-y-6 mt-6">
+            <TabsContent value="instructions" className="space-y-6 mt-6 max-h-[600px] overflow-y-auto">
               <div className="space-y-6">
                 {/* Text Instructions Section */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-lg font-medium flex items-center gap-2">
-                      📄 Text Instructions
+                      📄 Comprehensive Prompt Instructions
                     </Label>
                     <Button
                       onClick={handleCopyInstructions}
@@ -1176,13 +1231,29 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                       className="flex items-center gap-2"
                     >
                       <Copy className="w-4 h-4" />
-                      Copy All
+                      Copy Prompt
                     </Button>
                   </div>
-                  <div className="bg-muted rounded-lg p-4 space-y-3 text-sm">
-                    <div><strong className="text-blue-700 dark:text-blue-300">Description:</strong> <span className="text-gray-700 dark:text-gray-300">{container.description || 'No description available'}</span></div>
-                    <div><strong className="text-green-700 dark:text-green-300">Title:</strong> <span className="text-gray-700 dark:text-gray-300">{container.title || 'Untitled Workflow'}</span></div>
-                    <div><strong className="text-purple-700 dark:text-purple-300">Type:</strong> <span className="text-gray-700 dark:text-gray-300">Automation Workflow</span></div>
+                  <div className="bg-muted rounded-lg p-4 max-h-80 overflow-y-auto">
+                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                      {(() => {
+                        try {
+                          if (container.fullInstructions) {
+                            const parsed = JSON.parse(container.fullInstructions);
+                            // Look for comprehensive prompt in various possible fields
+                            const promptText = parsed.Prompt_Text || parsed.prompt_text || parsed.prompt || parsed.full_prompt || parsed.instructions || parsed.What_it_does;
+                            if (promptText && promptText.length > 100) {
+                              return promptText;
+                            }
+                            // Fallback to the entire JSON if no specific prompt field found
+                            return JSON.stringify(parsed, null, 2);
+                          }
+                          return container.fullInstructions || container.description || 'No comprehensive prompt available.';
+                        } catch {
+                          return container.fullInstructions || container.description || 'No comprehensive prompt available.';
+                        }
+                      })()} 
+                    </div>
                   </div>
                 </div>
 
@@ -1191,13 +1262,22 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                   <Label className="text-lg font-medium flex items-center gap-2">
                     ⚙️ JSON Workflow Structure
                   </Label>
-                  <Textarea
-                    value={container.fullInstructions || 'No workflow data available.'}
-                    readOnly
-                    rows={12}
-                    className="text-xs bg-muted font-mono"
-                    data-testid="full-instructions-tab"
-                  />
+                  <div className="bg-muted rounded-lg p-4 max-h-80 overflow-y-auto">
+                    <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                      {(() => {
+                        try {
+                          if (container.fullInstructions) {
+                            const parsed = JSON.parse(container.fullInstructions);
+                            const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+                            return JSON.stringify(workflowJSON, null, 2);
+                          }
+                          return 'No JSON workflow structure available.';
+                        } catch {
+                          return container.fullInstructions || 'No workflow data available.';
+                        }
+                      })()} 
+                    </pre>
+                  </div>
                 </div>
                 
                 {/* Workflow Steps Summary */}
