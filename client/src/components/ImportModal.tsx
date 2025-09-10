@@ -166,20 +166,37 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             }
 
             const { content, contentType } = proxyResponse;
-            let containerData;
+            let containerToCreate;
 
             if (contentType.includes('application/json')) {
-              containerData = JSON.parse(content);
+              // Handle JSON data URLs
+              const containerData = JSON.parse(content);
+              containerToCreate = {
+                ...containerData,
+                type: activeTab,
+                originalUrl: url
+              };
             } else {
-              throw new Error('URL did not return valid JSON data');
+              // Handle HTML/webpage URLs with intelligent analysis (same as individual import)
+              const html = content;
+              const analysis = analyzeAppContent(html, url);
+              
+              containerToCreate = {
+                title: analysis.title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
+                description: analysis.description || `Imported ${activeTab} from ${url}`,
+                type: activeTab,
+                industry: analysis.appType || '',
+                department: '',
+                visibility: 'public' as const,
+                tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
+                url: url,
+                originalUrl: url,
+                isMarketplace: true
+              };
             }
             
             // Create container using existing endpoint
-            const createResponse = await apiRequest('POST', '/api/containers', {
-              ...containerData,
-              type: activeTab,
-              originalUrl: url
-            });
+            const createResponse = await apiRequest('POST', '/api/containers', containerToCreate);
 
             const createResult = await createResponse.json();
             if (!createResponse.ok) {
@@ -189,7 +206,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             if (!bulkCancelRef.cancelled) {
               results.successful.push({
                 url,
-                title: containerData.name || containerData.title || 'Unnamed Container'
+                title: containerToCreate.title || 'Imported Container'
               });
             }
 
