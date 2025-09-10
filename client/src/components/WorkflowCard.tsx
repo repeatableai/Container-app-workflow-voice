@@ -476,14 +476,17 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     return Math.max(automationPercentage, 10); // minimum 10%
   };
 
-  // Generate authentic workflow steps based on real business purpose
+  // Generate authentic workflow steps based on real business purpose and actual integrations
   const generateAuthenticWorkflowSteps = (parsed: any, workflowJSON: any): WorkflowStep[] => {
     const title = container.title?.toLowerCase() || '';
     const description = parsed.What_it_does?.toLowerCase() || '';
     
-    // Extract integrations and systems
-    const integrations = workflowJSON.integrations?.required_systems || [];
+    // Extract actual integrations from title (e.g., "Via Salesforce, Hubspot, Zoom")
+    const actualIntegrations = extractIntegrationsFromTitle(container.title || '');
+    const integrations = actualIntegrations.length > 0 ? actualIntegrations : (workflowJSON.integrations?.required_systems || []);
     const integrationCount = integrations.length;
+    
+    console.log(`[WORKFLOW] ${container.title} has integrations:`, integrations);
     
     // Analyze workflow complexity from title and description
     const isSimpleTask = /\b(email|alert|notification|simple|basic|single)\b/.test(`${title} ${description}`);
@@ -496,94 +499,164 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     
     let steps: WorkflowStep[] = [];
     
-    // Generate authentic workflow steps based on purpose
-    if (isSimpleTask && integrationCount <= 2) {
-      // Simple 2-3 step workflows
-      steps = [
-        { id: 1, name: "Trigger", description: "Detect automation trigger", type: "trigger" },
-        { id: 2, name: "Execute", description: extractMainAction(title), type: "process" },
-        { id: 3, name: "Complete", description: "Send confirmation", type: "complete" }
-      ];
-    } else if (isOnboarding) {
-      // Onboarding workflows: 4-6 steps
-      steps = [
-        { id: 1, name: "New Account", description: "Detect new account signup", type: "trigger" },
-        { id: 2, name: "Validate Info", description: "Verify account details", type: "validation", isDecision: true },
-        { id: 3, name: "Setup Profile", description: "Create user profile", type: "process" },
-        { id: 4, name: "Configure Access", description: "Set permissions and access", type: "process" },
-        ...(integrationCount >= 3 ? [{ id: 5, name: "Sync Systems", description: "Update all connected systems", type: "integration", isIntegration: true }] : []),
-        { id: integrationCount >= 3 ? 6 : 5, name: "Welcome Flow", description: "Send welcome email and training", type: "complete" }
-      ];
-    } else if (isRenewal) {
-      // Renewal workflows: 6-8 steps
-      steps = [
-        { id: 1, name: "Renewal Alert", description: "Contract expiration detected", type: "trigger" },
-        { id: 2, name: "Check Usage", description: "Analyze account usage data", type: "validation", isDecision: true },
-        { id: 3, name: "Prep Materials", description: "Generate renewal proposal", type: "process" },
-        { id: 4, name: "Sales Alert", description: "Notify account manager", type: "integration", isIntegration: true },
-        { id: 5, name: "Schedule Meeting", description: "Book renewal discussion", type: "process" },
-        { id: 6, name: "Track Progress", description: "Monitor renewal status", type: "process" },
-        ...(hasApprovals ? [{ id: 7, name: "Review Terms", description: "Legal/finance review", type: "manual", isManual: true }] : []),
-        { id: hasApprovals ? 8 : 7, name: "Finalize", description: "Complete renewal process", type: "complete" }
-      ];
-    } else if (isMonitoring) {
-      // Monitoring workflows: 5-7 steps
-      steps = [
-        { id: 1, name: "Data Collection", description: "Gather system metrics", type: "trigger" },
-        { id: 2, name: "Analysis", description: "Process health indicators", type: "validation", isDecision: true },
-        { id: 3, name: "Threshold Check", description: "Compare against benchmarks", type: "validation", isDecision: true },
-        { id: 4, name: "Alert Logic", description: "Determine notification level", type: "process" },
-        ...(integrationCount >= 2 ? [{ id: 5, name: "System Updates", description: "Update dashboards and systems", type: "integration", isIntegration: true }] : []),
-        { id: integrationCount >= 2 ? 6 : 5, name: "Notifications", description: "Alert stakeholders if needed", type: "complete" },
-        ...(isComplexProcess ? [{ id: integrationCount >= 2 ? 7 : 6, name: "Escalation", description: "Escalate critical issues", type: "manual", isManual: true }] : [])
-      ];
-    } else if (isReporting) {
-      // Reporting workflows: 6-9 steps
-      steps = [
-        { id: 1, name: "Schedule", description: "Report generation triggered", type: "trigger" },
-        { id: 2, name: "Data Gather", description: "Collect from all sources", type: "process" },
-        { id: 3, name: "Data Clean", description: "Validate and clean data", type: "validation", isDecision: true },
-        { id: 4, name: "Generate Report", description: "Create formatted report", type: "process" },
-        { id: 5, name: "Quality Check", description: "Verify report accuracy", type: "validation", isDecision: true },
-        ...(hasApprovals ? [{ id: 6, name: "Review", description: "Manager review and approval", type: "manual", isManual: true }] : []),
-        { id: hasApprovals ? 7 : 6, name: "Distribute", description: "Send to stakeholders", type: "integration", isIntegration: true },
-        { id: hasApprovals ? 8 : 7, name: "Archive", description: "Store for compliance", type: "process" },
-        ...(isComplexProcess ? [{ id: hasApprovals ? 9 : 8, name: "Follow-up", description: "Track action items", type: "complete" }] : [{ id: hasApprovals ? 8 : 7, name: "Complete", description: "Report delivered", type: "complete" }])
-      ];
-    } else if (hasApprovals || isComplexProcess) {
-      // Complex approval workflows: 7-10 steps
-      steps = [
-        { id: 1, name: "Request", description: "Approval request received", type: "trigger" },
-        { id: 2, name: "Validate", description: "Check request completeness", type: "validation", isDecision: true },
-        { id: 3, name: "Route", description: "Assign to appropriate approver", type: "process" },
-        { id: 4, name: "Review", description: "Manager/stakeholder review", type: "manual", isManual: true },
-        { id: 5, name: "Decision", description: "Approval or rejection decision", type: "validation", isDecision: true },
-        ...(integrationCount >= 2 ? [{ id: 6, name: "System Update", description: "Update all connected systems", type: "integration", isIntegration: true }] : []),
-        { id: integrationCount >= 2 ? 7 : 6, name: "Notify", description: "Inform all stakeholders", type: "complete" },
-        ...(isComplexProcess ? [
-          { id: integrationCount >= 2 ? 8 : 7, name: "Execute", description: "Implement approved changes", type: "process" },
-          { id: integrationCount >= 2 ? 9 : 8, name: "Verify", description: "Confirm implementation", type: "validation", isDecision: true },
-          { id: integrationCount >= 2 ? 10 : 9, name: "Close", description: "Mark workflow complete", type: "complete" }
-        ] : [])
-      ];
-    } else {
-      // Standard workflows: 4-6 steps
-      steps = [
-        { id: 1, name: "Trigger", description: "Automation initiated", type: "trigger" },
-        { id: 2, name: "Process", description: extractMainAction(title), type: "process" },
-        ...(integrationCount >= 2 ? [{ id: 3, name: "Integrate", description: "Sync with connected systems", type: "integration", isIntegration: true }] : []),
-        { id: integrationCount >= 2 ? 4 : 3, name: "Validate", description: "Verify completion", type: "validation", isDecision: true },
-        { id: integrationCount >= 2 ? 5 : 4, name: "Complete", description: "Finalize and notify", type: "complete" }
-      ];
+    // Generate workflow with specific integration steps based on actual systems
+    const mainAction = extractMainAction(title);
+    steps = [];
+    let stepId = 1;
+    
+    // Always start with trigger
+    steps.push({
+      id: stepId++,
+      name: "Trigger",
+      description: `${mainAction} request received`,
+      type: "trigger"
+    });
+    
+    // Add validation step for complex processes
+    if (hasApprovals || isComplexProcess || integrationCount >= 3) {
+      steps.push({
+        id: stepId++,
+        name: "Validate",
+        description: "Verify request details and requirements",
+        type: "validation",
+        isDecision: true
+      });
     }
+    
+    // Add specific integration steps for each system
+    integrations.forEach((integration, index) => {
+      const integrationStep = createIntegrationStep(integration, mainAction, stepId++);
+      steps.push(integrationStep);
+    });
+    
+    // Add process step if no integrations or for coordination
+    if (integrationCount === 0) {
+      steps.push({
+        id: stepId++,
+        name: "Process",
+        description: mainAction,
+        type: "process"
+      });
+    } else if (isComplexProcess && integrationCount >= 2) {
+      steps.push({
+        id: stepId++,
+        name: "Coordinate",
+        description: "Sync data across all systems",
+        type: "process"
+      });
+    }
+    
+    // Add manual review for approval workflows
+    if (hasApprovals) {
+      steps.push({
+        id: stepId++,
+        name: "Review",
+        description: "Manual review and approval",
+        type: "manual",
+        isManual: true
+      });
+    }
+    
+    // Add monitoring step for ongoing processes
+    if (isMonitoring || (isComplexProcess && integrationCount >= 3)) {
+      steps.push({
+        id: stepId++,
+        name: "Monitor",
+        description: "Track progress and status",
+        type: "validation",
+        isDecision: true
+      });
+    }
+    
+    // Always end with completion
+    steps.push({
+      id: stepId++,
+      name: "Complete",
+      description: isComplexProcess ? "Process completed, stakeholders notified" : "Task completed",
+      type: "complete"
+    });
+    
+    console.log(`[WORKFLOW] Generated ${steps.length} steps with ${integrationCount} specific integrations for ${container.title}`);
     
     // Position steps dynamically based on count
     return positionWorkflowSteps(steps);
   };
 
+  const extractIntegrationsFromTitle = (title: string): string[] => {
+    // Extract integrations from "Via System1, System2, System3" pattern
+    const viaMatch = title.match(/via\s+([^,\n]+(?:,\s*[^,\n]+)*)/i);
+    if (viaMatch) {
+      return viaMatch[1]
+        .split(/[,\s]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 2 && !['and', 'or', 'with'].includes(s.toLowerCase()))
+        .slice(0, 6); // Max 6 integrations
+    }
+    return [];
+  };
+
   const extractMainAction = (title: string): string => {
     const cleanTitle = title.replace(/^.*automate\s+/i, '').replace(/\s+via.*$/i, '');
     return cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1).toLowerCase();
+  };
+
+  const createIntegrationStep = (integration: string, action: string, stepNumber: number): WorkflowStep => {
+    const intLower = integration.toLowerCase();
+    let stepName = '';
+    let stepDescription = '';
+    let stepType = 'integration';
+    
+    // Create specific integration steps based on the actual system
+    if (intLower.includes('salesforce')) {
+      stepName = 'Salesforce CRM';
+      stepDescription = `${action} in Salesforce CRM`;
+    } else if (intLower.includes('hubspot')) {
+      stepName = 'HubSpot Update';
+      stepDescription = `${action} via HubSpot platform`;
+    } else if (intLower.includes('zendesk')) {
+      stepName = 'Zendesk Ticket';
+      stepDescription = `${action} through Zendesk system`;
+    } else if (intLower.includes('slack')) {
+      stepName = 'Slack Notify';
+      stepDescription = `${action} with Slack notification`;
+    } else if (intLower.includes('zoom')) {
+      stepName = 'Zoom Meeting';
+      stepDescription = `${action} via Zoom integration`;
+    } else if (intLower.includes('email')) {
+      stepName = 'Email Process';
+      stepDescription = `${action} through email system`;
+    } else if (intLower.includes('docusign')) {
+      stepName = 'DocuSign';
+      stepDescription = `${action} via DocuSign workflow`;
+    } else if (intLower.includes('asana')) {
+      stepName = 'Asana Task';
+      stepDescription = `${action} in Asana project`;
+    } else if (intLower.includes('tableau')) {
+      stepName = 'Tableau Data';
+      stepDescription = `${action} via Tableau analytics`;
+    } else if (intLower.includes('wordpress')) {
+      stepName = 'WordPress';
+      stepDescription = `${action} on WordPress platform`;
+    } else if (intLower.includes('dropbox')) {
+      stepName = 'Dropbox Sync';
+      stepDescription = `${action} through Dropbox storage`;
+    } else if (intLower.includes('calendar')) {
+      stepName = 'Calendar';
+      stepDescription = `${action} via calendar system`;
+    } else {
+      stepName = integration;
+      stepDescription = `${action} via ${integration}`;
+    }
+    
+    return {
+      id: stepNumber,
+      name: stepName,
+      description: stepDescription,
+      type: stepType,
+      x: 0, // Will be positioned later
+      y: 0,
+      isIntegration: true
+    };
   };
 
   const positionWorkflowSteps = (steps: WorkflowStep[]): WorkflowStep[] => {
