@@ -20,7 +20,7 @@ interface ImportModalProps {
 
 export default function ImportModal({ open, onOpenChange, type, activeTab = 'app', onSuccess }: ImportModalProps) {
   const { toast } = useToast();
-  const [importType, setImportType] = useState<'file' | 'url' | 'json'>('file');
+  const [importType, setImportType] = useState<'file' | 'url' | 'json' | 'bulk-urls'>('file');
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0, currentUrl: '' });
   const [bulkProgress, setBulkProgress] = useState({ 
@@ -32,6 +32,24 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     avgBatchTime: 0,
     eta: 0,
     speed: 0 
+  });
+  
+  // Bulk URL import states
+  const [bulkUrls, setBulkUrls] = useState('');
+  const [bulkResults, setBulkResults] = useState<{
+    successful: Array<{url: string, title: string}>;
+    failed: Array<{url: string, error: string}>;
+    processing: boolean;
+    currentUrl: string;
+    progress: number;
+    total: number;
+  }>({
+    successful: [],
+    failed: [],
+    processing: false,
+    currentUrl: '',
+    progress: 0,
+    total: 0
   });
 
   const handleFileImport = async (file: File) => {
@@ -824,7 +842,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           {/* Import Type Selection */}
           <div className="space-y-3">
             <Label>Import Method</Label>
-            <Select value={importType} onValueChange={(value: 'file' | 'url' | 'json') => setImportType(value)}>
+            <Select value={importType} onValueChange={(value: 'file' | 'url' | 'json' | 'bulk-urls') => setImportType(value)}>
               <SelectTrigger data-testid="import-method-select">
                 <SelectValue />
               </SelectTrigger>
@@ -832,6 +850,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 <SelectItem value="file">Upload File</SelectItem>
                 <SelectItem value="url">Import from URL</SelectItem>
                 <SelectItem value="json">Paste JSON Data</SelectItem>
+                <SelectItem value="bulk-urls">Bulk URL Import</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1033,6 +1052,134 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 className="font-mono text-sm resize-none overflow-auto"
                 data-testid="json-input"
               />
+            </div>
+          )}
+
+          {/* Bulk URL Import */}
+          {importType === 'bulk-urls' && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <Label>Bulk URLs</Label>
+                <Textarea
+                  placeholder={`Enter one URL per line, for example:
+https://app1.example.com
+https://app2.example.com
+https://app3.example.com
+
+Supports up to 50 URLs at once.`}
+                  rows={8}
+                  value={bulkUrls}
+                  onChange={(e) => setBulkUrls(e.target.value)}
+                  className="font-mono text-sm resize-none"
+                  data-testid="bulk-urls-input"
+                  disabled={bulkResults.processing}
+                />
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>
+                    {bulkUrls.split('\n').filter(url => url.trim()).length} URLs detected
+                  </span>
+                  <span>Limit: 50 URLs</span>
+                </div>
+              </div>
+
+              {/* Progress Section */}
+              {bulkResults.processing && (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Processing Bulk Import</span>
+                    <span className="text-sm text-muted-foreground">
+                      {bulkResults.progress}/{bulkResults.total}
+                    </span>
+                  </div>
+                  
+                  <Progress 
+                    value={(bulkResults.progress / bulkResults.total) * 100} 
+                    className="h-2"
+                  />
+                  
+                  {bulkResults.currentUrl && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Currently processing:</p>
+                      <p className="text-xs font-mono break-all bg-background/50 p-2 rounded border">
+                        {bulkResults.currentUrl}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-green-600">✓ Successful</span>
+                      <span className="font-medium text-green-600">
+                        {bulkResults.successful.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-red-600">✗ Failed</span>
+                      <span className="font-medium text-red-600">
+                        {bulkResults.failed.length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Results Summary */}
+              {(bulkResults.successful.length > 0 || bulkResults.failed.length > 0) && !bulkResults.processing && (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium">Import Results</h4>
+                  
+                  {bulkResults.successful.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600 font-medium">
+                        ✓ Successfully imported {bulkResults.successful.length} {activeTab}s:
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {bulkResults.successful.map((result, index) => (
+                          <div key={index} className="text-xs p-2 bg-green-50 dark:bg-green-950/20 rounded border">
+                            <p className="font-medium text-green-700 dark:text-green-300">{result.title}</p>
+                            <p className="text-green-600 dark:text-green-400 font-mono">{result.url}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {bulkResults.failed.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-red-600 font-medium">
+                        ✗ Failed to import {bulkResults.failed.length} URLs:
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {bulkResults.failed.map((result, index) => (
+                          <div key={index} className="text-xs p-2 bg-red-50 dark:bg-red-950/20 rounded border">
+                            <p className="text-red-600 dark:text-red-400 font-mono">{result.url}</p>
+                            <p className="text-red-500 dark:text-red-300">{result.error}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setBulkResults({
+                        successful: [],
+                        failed: [],
+                        processing: false,
+                        currentUrl: '',
+                        progress: 0,
+                        total: 0
+                      });
+                      setBulkUrls('');
+                    }}
+                    className="w-full"
+                  >
+                    Reset Results
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
