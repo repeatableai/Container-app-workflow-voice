@@ -637,7 +637,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch from URL');
+        throw new Error(`Failed to fetch from URL: ${response.status} ${response.statusText}`);
       }
       
       const contentType = response.headers.get('content-type') || '';
@@ -701,10 +701,25 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('URL import error:', error);
+      
+      let errorMessage = "URL import failed. Please check the URL and try again.";
+      
+      // Provide specific error messages for common issues
+      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
+        errorMessage = "Unable to access this URL due to security restrictions (CORS). Try importing the JSON data directly instead, or use a publicly accessible URL.";
+      } else if (error.message?.includes('Invalid URL')) {
+        errorMessage = "Please enter a valid URL (e.g., https://example.com)";
+      } else if (error.message?.includes('404') || error.message?.includes('Not Found')) {
+        errorMessage = "The URL was not found. Please check the URL and try again.";
+      } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
+        errorMessage = "Access to this URL is forbidden. Try a different URL or use JSON import instead.";
+      }
+      
       toast({
-        title: "Error",
-        description: "URL import failed. Please check the URL and try again.",
+        title: "Import Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
