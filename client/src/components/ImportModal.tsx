@@ -1034,16 +1034,16 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             </Button>
             <Button 
               disabled={isImporting}
-              onClick={() => {
+              onClick={async () => {
                 if (importType === 'url') {
                   const urlInput = document.querySelector('[data-testid="url-input"]') as HTMLInputElement;
                   if (urlInput?.value) {
-                    handleURLImport(urlInput.value);
+                    await handleURLImport(urlInput.value);
                   }
                 } else if (importType === 'json') {
                   const jsonInput = document.querySelector('[data-testid="json-input"]') as HTMLTextAreaElement;
                   if (jsonInput?.value) {
-                    handleJSONImport(jsonInput.value);
+                    await handleJSONImport(jsonInput.value);
                   }
                 }
               }}
