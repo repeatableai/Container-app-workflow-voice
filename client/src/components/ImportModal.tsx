@@ -80,13 +80,13 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     }
 
     // Remove duplicates
-    const urls = [...new Set(allUrls)];
+    const urls = Array.from(new Set(allUrls));
     const duplicates = allUrls.filter((url, index) => allUrls.indexOf(url) !== index);
 
     // Check for existing containers to avoid duplicates
     let existingContainers: any[] = [];
     try {
-      const response = await apiRequest('/api/containers');
+      const response = await apiRequest('GET', '/api/containers');
       if (response.ok) {
         existingContainers = await response.json();
       }
@@ -157,34 +157,33 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           
           try {
             // Use our existing proxy endpoint
-            const response = await apiRequest(`/api/fetch-url`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url })
-            });
+            const response = await apiRequest('POST', '/api/fetch-url', { url });
 
-            if (!response.ok) {
-              const errorType = response.status === 404 ? 'URL not found' : 
-                              response.status === 403 ? 'Access denied' :
-                              response.status >= 500 ? 'Server error' : 'HTTP error';
-              throw new Error(`${errorType} (${response.status}): ${response.statusText}`);
+            const proxyResponse = await response.json();
+            
+            if (!proxyResponse.success) {
+              throw new Error(proxyResponse.message || 'Failed to fetch URL');
             }
 
-            const containerData = await response.json();
+            const { content, contentType } = proxyResponse;
+            let containerData;
+
+            if (contentType.includes('application/json')) {
+              containerData = JSON.parse(content);
+            } else {
+              throw new Error('URL did not return valid JSON data');
+            }
             
             // Create container using existing endpoint
-            const createResponse = await apiRequest('/api/containers', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ...containerData,
-                type: activeTab,
-                originalUrl: url
-              })
+            const createResponse = await apiRequest('POST', '/api/containers', {
+              ...containerData,
+              type: activeTab,
+              originalUrl: url
             });
 
+            const createResult = await createResponse.json();
             if (!createResponse.ok) {
-              throw new Error(`Failed to create container: ${createResponse.statusText}`);
+              throw new Error(`Failed to create container: ${createResult.message || createResponse.statusText}`);
             }
 
             if (!bulkCancelRef.cancelled) {
@@ -1389,7 +1388,8 @@ Supports up to 50 URLs at once.`}
                         processing: false,
                         currentUrl: '',
                         progress: 0,
-                        total: 0
+                        total: 0,
+                        duplicates: []
                       });
                       setBulkUrls('');
                     }}
