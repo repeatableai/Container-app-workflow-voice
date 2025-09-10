@@ -601,13 +601,15 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
   };
 
   const analyzeWorkflowComplexity = () => {
-    // First try to parse JSON workflow structure
+    // First try to parse JSON workflow structure for real steps
     const jsonWorkflow = parseJSONWorkflow();
     if (jsonWorkflow.steps.length > 0) {
+      console.log(`[WORKFLOW] Using ${jsonWorkflow.steps.length} real JSON steps for ${container.title}`);
       return jsonWorkflow;
     }
     
     // Fallback to text analysis if JSON parsing fails
+    console.log(`[WORKFLOW] Falling back to text analysis for ${container.title}`);
     const workflowData = parseWorkflowData();
     
     // Analyze workflow text for complex patterns
@@ -1235,21 +1237,89 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                     </Button>
                   </div>
                   <div className="bg-muted rounded-lg p-4 max-h-80 overflow-y-auto">
-                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+                    <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {(() => {
                         try {
                           if (container.fullInstructions) {
                             const parsed = JSON.parse(container.fullInstructions);
-                            // Look for comprehensive prompt in various possible fields
-                            const promptText = parsed.Prompt_Text || parsed.prompt_text || parsed.prompt || parsed.full_prompt || parsed.instructions || parsed.What_it_does;
-                            if (promptText && promptText.length > 100) {
-                              return promptText;
+                            
+                            // Build comprehensive Lindy.ai prompt from all available JSON fields
+                            let comprehensivePrompt = '';
+                            
+                            // Title/Name section
+                            if (parsed.Prompt_Name) {
+                              comprehensivePrompt += `AUTOMATION NAME:\n${parsed.Prompt_Name}\n\n`;
                             }
-                            // Fallback to the entire JSON if no specific prompt field found
-                            return JSON.stringify(parsed, null, 2);
+                            
+                            // Core workflow description
+                            if (parsed.What_it_does) {
+                              comprehensivePrompt += `WHAT IT DOES:\n${parsed.What_it_does}\n\n`;
+                            }
+                            
+                            // Business value and importance
+                            if (parsed.Why_It_matters) {
+                              comprehensivePrompt += `WHY IT MATTERS:\n${parsed.Why_It_matters}\n\n`;
+                            }
+                            
+                            // Time savings and efficiency
+                            if (parsed['Avg._time_spent_manual_vs_automatic']) {
+                              comprehensivePrompt += `EFFICIENCY IMPACT:\n${parsed['Avg._time_spent_manual_vs_automatic']}\n\n`;
+                            }
+                            
+                            // Detailed workflow steps from JSON
+                            const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : {};
+                            if (workflowJSON.workflow_steps && workflowJSON.workflow_steps.length > 0) {
+                              comprehensivePrompt += `DETAILED AUTOMATION STEPS:\n`;
+                              workflowJSON.workflow_steps.forEach((step: any, index: number) => {
+                                const stepName = step.action?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || `Step ${index + 1}`;
+                                comprehensivePrompt += `${index + 1}. ${stepName}\n   Description: ${step.description || 'Process automation step'}\n`;
+                              });
+                              comprehensivePrompt += '\n';
+                            }
+                            
+                            // Required integrations and systems
+                            if (workflowJSON.integrations?.required_systems) {
+                              comprehensivePrompt += `REQUIRED SYSTEMS & INTEGRATIONS:\n${workflowJSON.integrations.required_systems.join(', ')}\n\n`;
+                            }
+                            
+                            // Performance metrics
+                            if (workflowJSON.performance) {
+                              comprehensivePrompt += `PERFORMANCE METRICS:\n`;
+                              if (workflowJSON.performance.time_savings) {
+                                comprehensivePrompt += `• Time Savings: ${workflowJSON.performance.time_savings}\n`;
+                              }
+                              if (workflowJSON.performance.automation_level) {
+                                comprehensivePrompt += `• Automation Level: ${workflowJSON.performance.automation_level}\n`;
+                              }
+                              if (workflowJSON.performance.error_reduction) {
+                                comprehensivePrompt += `• Error Reduction: ${workflowJSON.performance.error_reduction}\n`;
+                              }
+                              comprehensivePrompt += '\n';
+                            }
+                            
+                            // Visual flowchart information
+                            if (parsed.Visual_Flowchart) {
+                              comprehensivePrompt += `VISUAL FLOW:\n${parsed.Visual_Flowchart}\n\n`;
+                            }
+                            
+                            // Error handling and compliance
+                            if (workflowJSON.error_handling || workflowJSON.compliance) {
+                              comprehensivePrompt += `TECHNICAL SPECIFICATIONS:\n`;
+                              if (workflowJSON.error_handling) {
+                                comprehensivePrompt += `• Error Handling: ${workflowJSON.error_handling.retry_logic || 'Standard retry logic'}\n`;
+                                comprehensivePrompt += `• Escalation: ${workflowJSON.error_handling.escalation || 'Administrative notification'}\n`;
+                              }
+                              if (workflowJSON.compliance) {
+                                comprehensivePrompt += `• Security: ${workflowJSON.compliance.data_security || 'Encrypted transmission'}\n`;
+                                comprehensivePrompt += `• Audit Trail: ${workflowJSON.compliance.audit_trail || 'Complete activity log'}\n`;
+                              }
+                            }
+                            
+                            return comprehensivePrompt || container.description || 'No comprehensive workflow instructions available.';
                           }
                           return container.fullInstructions || container.description || 'No comprehensive prompt available.';
-                        } catch {
+                        } catch (error) {
+                          console.error('Error parsing workflow instructions:', error);
                           return container.fullInstructions || container.description || 'No comprehensive prompt available.';
                         }
                       })()} 
