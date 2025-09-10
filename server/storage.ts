@@ -574,6 +574,70 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUseCasesWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    if (type === 'app') {
+      // For apps, extract use cases from tags field where we store analyzed categories
+      const result = await db
+        .select({
+          tags: containers.tags,
+          title: containers.title,
+          description: containers.description,
+          industry: containers.industry
+        })
+        .from(containers)
+        .where(and(
+          eq(containers.type, 'app'),
+          eq(containers.isMarketplace, true)
+        ));
+      
+      const useCases = new Map<string, number>();
+      
+      result.forEach(r => {
+        let useCase = 'Business Operations'; // fallback
+        
+        // Extract use case from industry field (which now contains meaningful categories)
+        if (r.industry) {
+          const industry = r.industry;
+          if (industry.includes('Design') || industry.includes('Creative')) {
+            useCase = 'Graphic Design';
+          } else if (industry.includes('Sales') || industry.includes('CRM')) {
+            useCase = 'Lead Management';
+          } else if (industry.includes('Marketing')) {
+            useCase = 'Campaign Management';
+          } else if (industry.includes('Finance')) {
+            useCase = 'Financial Management';
+          } else if (industry.includes('Development') || industry.includes('Software')) {
+            useCase = 'Code Development';
+          } else if (industry.includes('Project') || industry.includes('Productivity')) {
+            useCase = 'Project Management';
+          } else if (industry.includes('Communication')) {
+            useCase = 'Team Communication';
+          } else if (industry.includes('Data') || industry.includes('Analytics')) {
+            useCase = 'Data Analysis';
+          } else if (industry.includes('Media')) {
+            useCase = 'Content Management';
+          } else {
+            useCase = 'Business Operations';
+          }
+        }
+        
+        // Also extract from tags for additional use case detection
+        if (r.tags && Array.isArray(r.tags)) {
+          const tags = r.tags as string[];
+          if (tags.some(tag => tag.includes('design') || tag.includes('graphics'))) {
+            useCase = 'Graphic Design';
+          } else if (tags.some(tag => tag.includes('lead') || tag.includes('crm'))) {
+            useCase = 'Lead Management';
+          } else if (tags.some(tag => tag.includes('marketing') || tag.includes('campaign'))) {
+            useCase = 'Campaign Management';
+          }
+        }
+        
+        useCases.set(useCase, (useCases.get(useCase) || 0) + 1);
+      });
+      
+      return Array.from(useCases.entries()).map(([name, count]) => ({ name, count }));
+    }
+    
     if (type === 'voice') {
       // For voices, extract use cases from ai_voice_agent_type field
       const result = await db
@@ -701,28 +765,13 @@ export class DatabaseStorage implements IStorage {
   // Company container operations
   async getCompanyContainers(companyId: string): Promise<Container[]> {
     const result = await db
-      .select({
-        id: containers.id,
-        title: containers.title,
-        description: containers.description,
-        type: containers.type,
-        industry: containers.industry,
-        department: containers.department,
-        visibility: containers.visibility,
-        tags: containers.tags,
-        url: containers.url,
-        isMarketplace: containers.isMarketplace,
-        views: containers.views,
-        createdBy: containers.createdBy,
-        createdAt: containers.createdAt,
-        updatedAt: containers.updatedAt,
-      })
+      .select()
       .from(containers)
       .innerJoin(companyContainerAssignments, eq(containers.id, companyContainerAssignments.containerId))
       .where(eq(companyContainerAssignments.companyId, companyId))
       .orderBy(desc(containers.createdAt));
     
-    return result;
+    return result.map(r => r.containers);
   }
   
   async assignContainerToCompany(assignmentData: InsertCompanyContainerAssignment): Promise<CompanyContainerAssignment> {

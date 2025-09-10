@@ -185,10 +185,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 title: analysis.title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
                 description: analysis.description || `Imported ${activeTab} from ${url}`,
                 type: activeTab,
-                industry: analysis.appType || '',
-                department: '',
+                industry: analysis.industry || 'Business Tools',
+                department: analysis.department || 'General',
                 visibility: 'public' as const,
-                tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
+                tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features, analysis.useCase?.toLowerCase()].filter(Boolean),
                 url: url,
                 originalUrl: url,
                 isMarketplace: true
@@ -740,7 +740,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     // Enhanced title extraction with intelligent analysis
     let title = '';
     let appType = '';
-    let features = [];
+    let industry = '';
+    let department = '';
+    let useCase = '';
+    let features: string[] = [];
     
     // 1. Try standard meta tags first
     title = doc.querySelector('title')?.textContent ||
@@ -757,60 +760,120 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     const videos = doc.querySelectorAll('video');
     const forms = doc.querySelectorAll('form');
     
-    // Detect app type based on elements and functionality
-    if (canvases.length > 0) {
-      appType = 'Drawing/Graphics';
+    // Get text content for deeper analysis
+    const pageText = doc.body?.textContent?.toLowerCase() || '';
+    const combinedText = `${title} ${headings.join(' ')} ${pageText}`.toLowerCase();
+
+    // Enhanced categorization with industry mapping
+    if (canvases.length > 0 || combinedText.includes('draw') || combinedText.includes('paint') || combinedText.includes('design')) {
+      appType = 'Creative Tool';
+      industry = 'Design & Creative';
+      department = 'Design Team';
+      useCase = 'Graphic Design';
       if (!title || title.includes('localhost') || title.includes('index')) {
         title = headings[0] || 'Creative Drawing Canvas';
       }
-      features.push('canvas drawing', 'graphics tools');
-    } else if (videos.length > 0 || buttons.some(b => b.includes('play') || b.includes('pause'))) {
-      appType = 'Media Player';
+      features.push('canvas drawing', 'graphics tools', 'creative design');
+    } else if (combinedText.includes('crm') || combinedText.includes('lead') || combinedText.includes('customer') || combinedText.includes('sales')) {
+      appType = 'CRM Tool';
+      industry = 'Sales & CRM';
+      department = 'Sales Team';
+      useCase = 'Lead Management';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'CRM Application';
+      }
+      features.push('customer management', 'lead tracking', 'sales pipeline');
+    } else if (combinedText.includes('marketing') || combinedText.includes('campaign') || combinedText.includes('email') || combinedText.includes('social')) {
+      appType = 'Marketing Tool';
+      industry = 'Marketing & Analytics';
+      department = 'Marketing Team';
+      useCase = 'Campaign Management';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Marketing Platform';
+      }
+      features.push('campaign management', 'marketing automation', 'analytics');
+    } else if (combinedText.includes('finance') || combinedText.includes('budget') || combinedText.includes('accounting') || combinedText.includes('invoice')) {
+      appType = 'Finance Tool';
+      industry = 'Finance & Accounting';
+      department = 'Finance Team';
+      useCase = 'Financial Management';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Finance Application';
+      }
+      features.push('financial tracking', 'budget management', 'reporting');
+    } else if (combinedText.includes('project') || combinedText.includes('task') || combinedText.includes('team') || buttons.some(b => b.includes('task') || b.includes('todo') || b.includes('complete'))) {
+      appType = 'Project Management';
+      industry = 'Productivity & Collaboration';
+      department = 'Project Management';
+      useCase = 'Project Tracking';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Project Management Tool';
+      }
+      features.push('task tracking', 'project management', 'team collaboration');
+    } else if (combinedText.includes('code') || combinedText.includes('development') || combinedText.includes('programming') || buttons.some(b => b.includes('edit') || b.includes('save') || b.includes('code'))) {
+      appType = 'Development Tool';
+      industry = 'Software Development';
+      department = 'Engineering Team';
+      useCase = 'Code Development';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Development Tool';
+      }
+      features.push('code editing', 'development tools', 'programming');
+    } else if (videos.length > 0 || buttons.some(b => b.includes('play') || b.includes('pause')) || combinedText.includes('media') || combinedText.includes('video')) {
+      appType = 'Media Tool';
+      industry = 'Media & Entertainment';
+      department = 'Content Team';
+      useCase = 'Media Management';
       if (!title || title.includes('localhost') || title.includes('index')) {
         title = headings[0] || 'Media Player Application';
       }
-      features.push('video playback', 'media controls');
-    } else if (buttons.some(b => b.includes('chat') || b.includes('send') || b.includes('message'))) {
-      appType = 'Communication';
+      features.push('video playback', 'media controls', 'content management');
+    } else if (buttons.some(b => b.includes('chat') || b.includes('send') || b.includes('message')) || combinedText.includes('chat') || combinedText.includes('communication')) {
+      appType = 'Communication Tool';
+      industry = 'Communication & Collaboration';
+      department = 'Operations Team';
+      useCase = 'Team Communication';
       if (!title || title.includes('localhost') || title.includes('index')) {
-        title = headings[0] || 'Chat Application';
+        title = headings[0] || 'Communication Platform';
       }
-      features.push('messaging', 'real-time communication');
-    } else if (buttons.some(b => b.includes('task') || b.includes('todo') || b.includes('complete'))) {
-      appType = 'Productivity';
-      if (!title || title.includes('localhost') || title.includes('index')) {
-        title = headings[0] || 'Task Management Tool';
-      }
-      features.push('task tracking', 'productivity management');
-    } else if (buttons.some(b => b.includes('calendar') || b.includes('schedule') || b.includes('event'))) {
-      appType = 'Calendar/Scheduling';
+      features.push('messaging', 'real-time communication', 'team chat');
+    } else if (buttons.some(b => b.includes('calendar') || b.includes('schedule') || b.includes('event')) || combinedText.includes('calendar') || combinedText.includes('schedule')) {
+      appType = 'Scheduling Tool';
+      industry = 'Productivity & Collaboration';
+      department = 'Operations Team';
+      useCase = 'Schedule Management';
       if (!title || title.includes('localhost') || title.includes('index')) {
         title = headings[0] || 'Calendar Scheduler';
       }
-      features.push('event scheduling', 'calendar management');
-    } else if (inputs.length > 3 || forms.length > 0) {
-      appType = 'Data Management';
-      if (!title || title.includes('localhost') || title.includes('index')) {
-        title = headings[0] || 'Data Entry Application';
-      }
-      features.push('form handling', 'data collection');
-    } else if (buttons.some(b => b.includes('edit') || b.includes('save') || b.includes('code'))) {
-      appType = 'Editor';
-      if (!title || title.includes('localhost') || title.includes('index')) {
-        title = headings[0] || 'Code Editor';
-      }
-      features.push('text editing', 'code management');
-    } else if (doc.querySelector('.chart, .graph, canvas[id*="chart"]')) {
-      appType = 'Analytics/Dashboard';
+      features.push('event scheduling', 'calendar management', 'appointment booking');
+    } else if (doc.querySelector('.chart, .graph, canvas[id*="chart"]') || combinedText.includes('analytics') || combinedText.includes('dashboard') || combinedText.includes('report')) {
+      appType = 'Analytics Tool';
+      industry = 'Data & Analytics';
+      department = 'Analytics Team';
+      useCase = 'Data Visualization';
       if (!title || title.includes('localhost') || title.includes('index')) {
         title = headings[0] || 'Analytics Dashboard';
       }
-      features.push('data visualization', 'analytics');
+      features.push('data visualization', 'analytics', 'reporting');
+    } else if (inputs.length > 3 || forms.length > 0 || combinedText.includes('form') || combinedText.includes('data')) {
+      appType = 'Data Management Tool';
+      industry = 'Data & Operations';
+      department = 'Operations Team';
+      useCase = 'Data Collection';
+      if (!title || title.includes('localhost') || title.includes('index')) {
+        title = headings[0] || 'Data Management Application';
+      }
+      features.push('form handling', 'data collection', 'information management');
     } else {
-      appType = 'Web Application';
+      // Default categorization with intelligent fallback
+      appType = 'Business Application';
+      industry = 'Business Tools';
+      department = 'General';
+      useCase = 'Business Operations';
       if (!title || title.includes('localhost') || title.includes('index')) {
         title = headings[0] || `${new URL(url).hostname.replace('www.', '')} App`;
       }
+      features.push('web application', 'business tools');
     }
     
     // Clean up title
@@ -856,6 +919,9 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       title: title.trim(),
       description: description.trim() || `A ${appType.toLowerCase()} with interactive features and modern web technologies.`,
       appType,
+      industry,
+      department,
+      useCase,
       features
     };
   };
@@ -917,10 +983,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
           title: analysis.title || `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} from ${new URL(url).hostname}`,
           description: analysis.description || `Imported ${activeTab} from ${url}`,
           type: activeTab,
-          industry: analysis.appType || '',
-          department: '',
+          industry: analysis.industry || 'Business Tools',
+          department: analysis.department || 'General',
           visibility: 'public' as const,
-          tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features].filter(Boolean),
+          tags: ['imported', 'url', analysis.appType.toLowerCase(), ...analysis.features, analysis.useCase?.toLowerCase()].filter(Boolean),
           url: url,
           isMarketplace: true
         };
