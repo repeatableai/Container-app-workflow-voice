@@ -845,24 +845,28 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                onDrop={(e) => {
+                onDrop={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const files = e.dataTransfer.files;
-                  if (files.length > 0) {
-                    const file = files[0];
-                    if (file.type === 'application/json' || file.name.endsWith('.json') ||
-                        file.name.endsWith('.jsonl') ||
-                        file.type === 'text/csv' || file.name.endsWith('.csv') ||
-                        file.type === 'application/zip' || file.name.endsWith('.zip')) {
-                      handleFileImport(file);
-                    } else {
-                      toast({
-                        title: "Invalid file type",
-                        description: "Please upload a JSON, JSONL, CSV, or ZIP file.",
-                        variant: "destructive",
-                      });
+                  try {
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                      const file = files[0];
+                      if (file.type === 'application/json' || file.name.endsWith('.json') ||
+                          file.name.endsWith('.jsonl') ||
+                          file.type === 'text/csv' || file.name.endsWith('.csv') ||
+                          file.type === 'application/zip' || file.name.endsWith('.zip')) {
+                        await handleFileImport(file);
+                      } else {
+                        toast({
+                          title: "Invalid file type",
+                          description: "Please upload a JSON, JSONL, CSV, or ZIP file.",
+                          variant: "destructive",
+                        });
+                      }
                     }
+                  } catch (error) {
+                    console.error('File drop error:', error);
                   }
                 }}
                 onClick={() => document.getElementById('file-input')?.click()}
@@ -882,10 +886,14 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
                 type="file"
                 className="hidden"
                 accept=".json,.jsonl,.csv,.zip"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleFileImport(file);
+                onChange={async (e) => {
+                  try {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      await handleFileImport(file);
+                    }
+                  } catch (error) {
+                    console.error('File input error:', error);
                   }
                 }}
                 data-testid="file-input"
@@ -1035,16 +1043,22 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             <Button 
               disabled={isImporting}
               onClick={async () => {
-                if (importType === 'url') {
-                  const urlInput = document.querySelector('[data-testid="url-input"]') as HTMLInputElement;
-                  if (urlInput?.value) {
-                    await handleURLImport(urlInput.value);
+                try {
+                  if (importType === 'url') {
+                    const urlInput = document.querySelector('[data-testid="url-input"]') as HTMLInputElement;
+                    if (urlInput?.value) {
+                      await handleURLImport(urlInput.value);
+                    }
+                  } else if (importType === 'json') {
+                    const jsonInput = document.querySelector('[data-testid="json-input"]') as HTMLTextAreaElement;
+                    if (jsonInput?.value) {
+                      await handleJSONImport(jsonInput.value);
+                    }
                   }
-                } else if (importType === 'json') {
-                  const jsonInput = document.querySelector('[data-testid="json-input"]') as HTMLTextAreaElement;
-                  if (jsonInput?.value) {
-                    await handleJSONImport(jsonInput.value);
-                  }
+                } catch (error) {
+                  console.error('Import error caught in onClick:', error);
+                  // Error handling is already done in the individual functions
+                  // This catch prevents any unhandled promise rejections
                 }
               }}
               data-testid="start-import"
