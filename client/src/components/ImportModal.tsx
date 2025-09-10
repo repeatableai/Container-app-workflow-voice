@@ -52,6 +52,146 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     total: 0
   });
 
+  // Bulk URL processing function
+  const handleBulkURLImport = async () => {
+    const urls = bulkUrls.split('\n')
+      .map(url => url.trim())
+      .filter(url => url && url.startsWith('http'));
+    
+    if (urls.length === 0) {
+      toast({
+        title: "No valid URLs",
+        description: "Please enter at least one valid URL starting with http:// or https://",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (urls.length > 50) {
+      toast({
+        title: "Too many URLs",
+        description: "Maximum 50 URLs allowed for bulk import",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Reset results and start processing
+    setBulkResults({
+      successful: [],
+      failed: [],
+      processing: true,
+      currentUrl: '',
+      progress: 0,
+      total: urls.length
+    });
+
+    setIsImporting(true);
+
+    try {
+      const results = {
+        successful: [] as Array<{url: string, title: string}>,
+        failed: [] as Array<{url: string, error: string}>
+      };
+
+      // Process URLs in batches of 3 for better performance
+      const batchSize = 3;
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (url) => {
+          setBulkResults(prev => ({ ...prev, currentUrl: url }));
+          
+          try {
+            // Use our existing proxy endpoint
+            const response = await apiRequest(`/api/fetch-url`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url })
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const containerData = await response.json();
+            
+            // Create container using existing endpoint
+            const createResponse = await apiRequest('/api/containers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...containerData,
+                type: activeTab,
+                originalUrl: url
+              })
+            });
+
+            if (!createResponse.ok) {
+              throw new Error(`Failed to create container: ${createResponse.statusText}`);
+            }
+
+            results.successful.push({
+              url,
+              title: containerData.name || containerData.title || 'Unnamed Container'
+            });
+
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            results.failed.push({ url, error: errorMessage });
+          }
+
+          // Update progress
+          setBulkResults(prev => ({
+            ...prev,
+            progress: prev.progress + 1,
+            successful: [...results.successful],
+            failed: [...results.failed]
+          }));
+        });
+
+        // Wait for current batch to complete
+        await Promise.all(batchPromises);
+        
+        // Brief pause between batches to avoid overwhelming servers
+        if (i + batchSize < urls.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      // Final update
+      setBulkResults(prev => ({
+        ...prev,
+        processing: false,
+        currentUrl: '',
+        successful: results.successful,
+        failed: results.failed
+      }));
+
+      toast({
+        title: "Bulk import completed",
+        description: `Successfully imported ${results.successful.length} containers. ${results.failed.length} failed.`,
+        variant: results.failed.length === 0 ? "default" : "destructive",
+      });
+
+      if (results.successful.length > 0) {
+        onSuccess();
+      }
+
+    } catch (error) {
+      console.error('Bulk import error:', error);
+      setBulkResults(prev => ({ ...prev, processing: false }));
+      toast({
+        title: "Bulk import failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleFileImport = async (file: File) => {
     setIsImporting(true);
     try {
@@ -1193,7 +1333,7 @@ Supports up to 50 URLs at once.`}
               Cancel
             </Button>
             <Button 
-              disabled={isImporting}
+              disabled={isImporting || bulkResults.processing}
               onClick={async () => {
                 try {
                   if (importType === 'url') {
@@ -1206,6 +1346,8 @@ Supports up to 50 URLs at once.`}
                     if (jsonInput?.value) {
                       await handleJSONImport(jsonInput.value);
                     }
+                  } else if (importType === 'bulk-urls') {
+                    await handleBulkURLImport();
                   }
                 } catch (error) {
                   console.error('Import error caught in onClick:', error);
@@ -1215,7 +1357,11 @@ Supports up to 50 URLs at once.`}
               }}
               data-testid="start-import"
             >
-              {isImporting ? 'Importing...' : 'Start Import'}
+              {isImporting || bulkResults.processing ? (
+                importType === 'bulk-urls' ? 'Processing URLs...' : 'Importing...'
+              ) : (
+                importType === 'bulk-urls' ? 'Start Bulk Import' : 'Start Import'
+              )}
             </Button>
           </div>
         </div>
