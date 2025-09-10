@@ -1048,6 +1048,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // URL fetch proxy endpoint for imports (bypasses CORS)
+  app.post('/api/fetch-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ message: "URL is required" });
+      }
+      
+      // Validate URL
+      let targetUrl: URL;
+      try {
+        targetUrl = new URL(url);
+      } catch {
+        return res.status(400).json({ message: "Invalid URL format" });
+      }
+      
+      console.log(`[FETCH-URL] Fetching ${url} for import`);
+      
+      // Fetch the external content with comprehensive headers
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'cross-site',
+          'Sec-Fetch-User': '?1',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined // 15 second timeout
+      });
+      
+      if (!response.ok) {
+        console.log(`[FETCH-URL] Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+        return res.status(response.status).json({ 
+          message: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+          status: response.status,
+          statusText: response.statusText,
+          url: url
+        });
+      }
+      
+      const contentType = response.headers.get('content-type') || '';
+      const content = await response.text();
+      
+      console.log(`[FETCH-URL] Successfully fetched ${url} (${content.length} bytes, type: ${contentType})`);
+      
+      // Return the content with metadata
+      res.json({
+        success: true,
+        url: url,
+        content: content,
+        contentType: contentType,
+        size: content.length,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+    } catch (error) {
+      console.error(`[FETCH-URL] Error fetching URL:`, error);
+      
+      if (error.name === 'AbortError') {
+        return res.status(408).json({ 
+          message: "Request timeout - the URL took too long to respond",
+          error: "timeout"
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to fetch URL", 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        url: req.body.url
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
