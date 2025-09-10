@@ -110,6 +110,117 @@ export class DatabaseStorage implements IStorage {
     isMarketplace?: boolean;
     userId?: string;
   }): Promise<Container[]> {
+    // For workflows with industry/department filters, handle JSON parsing
+    if (filters?.type === 'workflow' && (filters?.industry || filters?.department)) {
+      // Get all workflows first, then filter in memory based on JSON data
+      let query = db.select().from(containers);
+      const conditions: any[] = [];
+
+      conditions.push(eq(containers.type, 'workflow'));
+      
+      if (filters?.visibility) {
+        conditions.push(eq(containers.visibility, filters.visibility as any));
+      }
+      
+      if (filters?.isMarketplace !== undefined) {
+        conditions.push(eq(containers.isMarketplace, filters.isMarketplace));
+      }
+      
+      if (filters?.search) {
+        conditions.push(
+          sql`(${containers.title} ILIKE ${`%${filters.search}%`} OR ${containers.description} ILIKE ${`%${filters.search}%`})`
+        );
+      }
+
+      query = query.where(and(...conditions)) as any;
+      const allWorkflows = await query.orderBy(desc(containers.createdAt));
+      
+      // Filter workflows based on JSON data
+      const filteredWorkflows = allWorkflows.filter(container => {
+        try {
+          if (!container.fullInstructions) return false;
+          
+          const parsed = JSON.parse(container.fullInstructions);
+          const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+          
+          // Extract actual industry/department from JSON
+          let actualIndustry = 'Business';
+          let actualDepartment = 'General Business';
+          
+          // Industry extraction
+          if (workflowJSON.department) {
+            actualIndustry = workflowJSON.department;
+          } else if (parsed.Department) {
+            actualIndustry = parsed.Department;
+          } else if (workflowJSON.industry) {
+            actualIndustry = workflowJSON.industry;
+          } else {
+            // Fallback to title analysis
+            const title = (container.title || '').toLowerCase();
+            if (title.includes('healthcare') || title.includes('medical')) {
+              actualIndustry = 'Healthcare';
+            } else if (title.includes('finance') || title.includes('bank')) {
+              actualIndustry = 'Finance';
+            } else if (title.includes('education') || title.includes('school')) {
+              actualIndustry = 'Education';
+            } else if (title.includes('retail') || title.includes('sales')) {
+              actualIndustry = 'Retail';
+            } else if (title.includes('technology') || title.includes('software')) {
+              actualIndustry = 'Technology';
+            }
+          }
+          
+          // Department extraction  
+          if (workflowJSON.role) {
+            actualDepartment = workflowJSON.role;
+          } else if (parsed.Role) {
+            actualDepartment = parsed.Role;
+          } else if (workflowJSON.department) {
+            actualDepartment = workflowJSON.department;
+          } else if (parsed.Department) {
+            actualDepartment = parsed.Department;
+          } else {
+            // Fallback to title analysis
+            const title = container.title?.toLowerCase() || '';
+            if (title.includes('administrative assistant') || title.includes('admin')) {
+              actualDepartment = 'Administration';
+            } else if (title.includes('executive assistant')) {
+              actualDepartment = 'Executive Office';
+            } else if (title.includes('human resources') || title.includes('hr')) {
+              actualDepartment = 'Human Resources';
+            } else if (title.includes('facilities')) {
+              actualDepartment = 'Facilities';
+            } else if (title.includes('marketing')) {
+              actualDepartment = 'Marketing';
+            } else if (title.includes('finance') || title.includes('accounting')) {
+              actualDepartment = 'Finance';
+            } else if (title.includes('sales')) {
+              actualDepartment = 'Sales';
+            } else if (title.includes('operations') || title.includes('management')) {
+              actualDepartment = 'Operations';
+            }
+          }
+          
+          // Apply filters
+          if (filters?.industry && actualIndustry !== filters.industry) {
+            return false;
+          }
+          
+          if (filters?.department && actualDepartment !== filters.department) {
+            return false;
+          }
+          
+          return true;
+        } catch (error) {
+          // If JSON parsing fails, exclude from results for workflow filters
+          return false;
+        }
+      });
+      
+      return filteredWorkflows;
+    }
+    
+    // For non-workflow types or workflows without industry/department filters, use original logic
     let query = db.select().from(containers);
     const conditions: any[] = [];
 
@@ -288,6 +399,70 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIndustriesWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
+    if (type === 'workflow') {
+      // For workflows, extract industries from JSON fullInstructions
+      const result = await db
+        .select({
+          fullInstructions: containers.fullInstructions,
+          title: containers.title,
+          description: containers.description,
+        })
+        .from(containers)
+        .where(and(
+          eq(containers.type, 'workflow'),
+          eq(containers.isMarketplace, true)
+        ));
+      
+      const industries = new Map<string, number>();
+      
+      result.forEach(r => {
+        let industry = 'Business'; // fallback
+        
+        try {
+          if (r.fullInstructions) {
+            const parsed = JSON.parse(r.fullInstructions);
+            const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+            
+            // Extract industry from JSON structure
+            if (workflowJSON.department) {
+              industry = workflowJSON.department;
+            } else if (parsed.Department) {
+              industry = parsed.Department;
+            } else if (workflowJSON.industry) {
+              industry = workflowJSON.industry;
+            } else {
+              // Intelligent industry extraction from titles
+              const title = (r.title || '').toLowerCase();
+              if (title.includes('healthcare') || title.includes('medical')) {
+                industry = 'Healthcare';
+              } else if (title.includes('finance') || title.includes('bank') || title.includes('investment')) {
+                industry = 'Finance';
+              } else if (title.includes('education') || title.includes('school') || title.includes('university')) {
+                industry = 'Education';
+              } else if (title.includes('retail') || title.includes('sales') || title.includes('customer')) {
+                industry = 'Retail';
+              } else if (title.includes('manufacturing') || title.includes('production')) {
+                industry = 'Manufacturing';
+              } else if (title.includes('technology') || title.includes('software') || title.includes('it')) {
+                industry = 'Technology';
+              } else if (title.includes('legal') || title.includes('law')) {
+                industry = 'Legal';
+              } else {
+                industry = 'Business';
+              }
+            }
+          }
+        } catch (error) {
+          industry = 'Business';
+        }
+        
+        industries.set(industry, (industries.get(industry) || 0) + 1);
+      });
+      
+      return Array.from(industries.entries()).map(([name, count]) => ({ name, count }));
+    }
+    
+    // For non-workflow types, use original logic
     let whereConditions = [sql`${containers.industry} IS NOT NULL`, eq(containers.isMarketplace, true)];
     
     if (type) {
@@ -308,9 +483,10 @@ export class DatabaseStorage implements IStorage {
 
   async getDepartmentsWithCounts(type?: string): Promise<{ name: string; count: number }[]> {
     if (type === 'workflow') {
-      // For workflows, extract departments from titles using intelligent parsing
+      // For workflows, extract departments from JSON fullInstructions first, then fallback to text analysis
       const result = await db
         .select({
+          fullInstructions: containers.fullInstructions,
           title: containers.title,
           description: containers.description,
         })
@@ -323,32 +499,56 @@ export class DatabaseStorage implements IStorage {
       const departments = new Map<string, number>();
       
       result.forEach(r => {
-        const title = r.title?.toLowerCase() || '';
-        const description = r.description?.toLowerCase() || '';
-        const text = `${title} ${description}`;
+        let department = 'General Business'; // fallback
         
-        // Smart categorization based on job roles and departments in titles
-        if (text.includes('human resources') || text.includes('hr specialist')) {
-          departments.set('Human Resources', (departments.get('Human Resources') || 0) + 1);
-        } else if (text.includes('administrative assistant') || text.includes('admin')) {
-          departments.set('Administration', (departments.get('Administration') || 0) + 1);
-        } else if (text.includes('executive assistant')) {
-          departments.set('Executive Office', (departments.get('Executive Office') || 0) + 1);
-        } else if (text.includes('facilities manager') || text.includes('facilities')) {
-          departments.set('Facilities', (departments.get('Facilities') || 0) + 1);
-        } else if (text.includes('marketing') || text.includes('social media')) {
-          departments.set('Marketing', (departments.get('Marketing') || 0) + 1);
-        } else if (text.includes('finance') || text.includes('accounting') || text.includes('budget')) {
-          departments.set('Finance', (departments.get('Finance') || 0) + 1);
-        } else if (text.includes('sales') || text.includes('business development')) {
-          departments.set('Sales', (departments.get('Sales') || 0) + 1);
-        } else if (text.includes('it') || text.includes('technical') || text.includes('support')) {
-          departments.set('IT Support', (departments.get('IT Support') || 0) + 1);
-        } else if (text.includes('operations') || text.includes('management')) {
-          departments.set('Operations', (departments.get('Operations') || 0) + 1);
-        } else {
-          departments.set('General Business', (departments.get('General Business') || 0) + 1);
+        try {
+          if (r.fullInstructions) {
+            const parsed = JSON.parse(r.fullInstructions);
+            const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+            
+            // First try to extract from JSON structure
+            if (workflowJSON.role) {
+              department = workflowJSON.role;
+            } else if (parsed.Role) {
+              department = parsed.Role;
+            } else if (workflowJSON.department) {
+              department = workflowJSON.department;
+            } else if (parsed.Department) {
+              department = parsed.Department;
+            }
+          }
+        } catch (error) {
+          // If JSON parsing fails, fall back to text analysis
         }
+        
+        // If no department found in JSON, use text analysis
+        if (department === 'General Business') {
+          const title = r.title?.toLowerCase() || '';
+          const description = r.description?.toLowerCase() || '';
+          const text = `${title} ${description}`;
+          
+          if (text.includes('human resources') || text.includes('hr specialist')) {
+            department = 'Human Resources';
+          } else if (text.includes('administrative assistant') || text.includes('admin')) {
+            department = 'Administration';
+          } else if (text.includes('executive assistant')) {
+            department = 'Executive Office';
+          } else if (text.includes('facilities manager') || text.includes('facilities')) {
+            department = 'Facilities';
+          } else if (text.includes('marketing') || text.includes('social media')) {
+            department = 'Marketing';
+          } else if (text.includes('finance') || text.includes('accounting') || text.includes('budget')) {
+            department = 'Finance';
+          } else if (text.includes('sales') || text.includes('business development')) {
+            department = 'Sales';
+          } else if (text.includes('it') || text.includes('technical') || text.includes('support')) {
+            department = 'IT Support';
+          } else if (text.includes('operations') || text.includes('management')) {
+            department = 'Operations';
+          }
+        }
+        
+        departments.set(department, (departments.get(department) || 0) + 1);
       });
       
       return Array.from(departments.entries()).map(([name, count]) => ({ name, count }));
@@ -393,9 +593,10 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (type === 'workflow') {
-      // For workflows, extract use cases from titles and descriptions using intelligent parsing
+      // For workflows, extract use cases from JSON fullInstructions first, then fallback to text analysis
       const result = await db
         .select({
+          fullInstructions: containers.fullInstructions,
           title: containers.title,
           description: containers.description,
         })
@@ -408,34 +609,58 @@ export class DatabaseStorage implements IStorage {
       const useCases = new Map<string, number>();
       
       result.forEach(r => {
-        const title = r.title?.toLowerCase() || '';
-        const description = r.description?.toLowerCase() || '';
-        const text = `${title} ${description}`;
+        let useCase = 'General Automation'; // fallback
         
-        // Smart categorization based on keywords in titles/descriptions
-        if (text.includes('scheduling') || text.includes('meeting') || text.includes('calendar')) {
-          useCases.set('Scheduling & Meetings', (useCases.get('Scheduling & Meetings') || 0) + 1);
-        } else if (text.includes('document') && (text.includes('prep') || text.includes('format'))) {
-          useCases.set('Document Management', (useCases.get('Document Management') || 0) + 1);
-        } else if (text.includes('data entry') || text.includes('reporting')) {
-          useCases.set('Data Entry & Reporting', (useCases.get('Data Entry & Reporting') || 0) + 1);
-        } else if (text.includes('travel') || text.includes('expense')) {
-          useCases.set('Travel & Expense Management', (useCases.get('Travel & Expense Management') || 0) + 1);
-        } else if (text.includes('maintenance') || text.includes('facilities')) {
-          useCases.set('Facilities Management', (useCases.get('Facilities Management') || 0) + 1);
-        } else if (text.includes('budget') || text.includes('financial') || text.includes('cost')) {
-          useCases.set('Financial Management', (useCases.get('Financial Management') || 0) + 1);
-        } else if (text.includes('compliance') || text.includes('audit')) {
-          useCases.set('Compliance & Audit', (useCases.get('Compliance & Audit') || 0) + 1);
-        } else if (text.includes('communication') || text.includes('email') || text.includes('slack')) {
-          useCases.set('Communication Automation', (useCases.get('Communication Automation') || 0) + 1);
-        } else if (text.includes('hr') || text.includes('human resources') || text.includes('employee')) {
-          useCases.set('Human Resources', (useCases.get('Human Resources') || 0) + 1);
-        } else if (text.includes('admin') || text.includes('coordination')) {
-          useCases.set('Administrative Support', (useCases.get('Administrative Support') || 0) + 1);
-        } else {
-          useCases.set('General Automation', (useCases.get('General Automation') || 0) + 1);
+        try {
+          if (r.fullInstructions) {
+            const parsed = JSON.parse(r.fullInstructions);
+            const workflowJSON = parsed.Workflow_JSON ? JSON.parse(parsed.Workflow_JSON) : parsed;
+            
+            // First try to extract from JSON structure
+            if (workflowJSON.category) {
+              useCase = workflowJSON.category;
+            } else if (parsed.Category) {
+              useCase = parsed.Category;
+            } else if (workflowJSON.use_case) {
+              useCase = workflowJSON.use_case;
+            } else if (parsed.Use_Case) {
+              useCase = parsed.Use_Case;
+            }
+          }
+        } catch (error) {
+          // If JSON parsing fails, fall back to text analysis
         }
+        
+        // If no use case found in JSON, use text analysis
+        if (useCase === 'General Automation') {
+          const title = r.title?.toLowerCase() || '';
+          const description = r.description?.toLowerCase() || '';
+          const text = `${title} ${description}`;
+          
+          if (text.includes('scheduling') || text.includes('meeting') || text.includes('calendar')) {
+            useCase = 'Scheduling & Meetings';
+          } else if (text.includes('document') && (text.includes('prep') || text.includes('format'))) {
+            useCase = 'Document Management';
+          } else if (text.includes('data entry') || text.includes('reporting')) {
+            useCase = 'Data Entry & Reporting';
+          } else if (text.includes('travel') || text.includes('expense')) {
+            useCase = 'Travel & Expense Management';
+          } else if (text.includes('maintenance') || text.includes('facilities')) {
+            useCase = 'Facilities Management';
+          } else if (text.includes('budget') || text.includes('financial') || text.includes('cost')) {
+            useCase = 'Financial Management';
+          } else if (text.includes('compliance') || text.includes('audit')) {
+            useCase = 'Compliance & Audit';
+          } else if (text.includes('communication') || text.includes('email') || text.includes('slack')) {
+            useCase = 'Communication Automation';
+          } else if (text.includes('hr') || text.includes('human resources') || text.includes('employee')) {
+            useCase = 'Human Resources';
+          } else if (text.includes('admin') || text.includes('coordination')) {
+            useCase = 'Administrative Support';
+          }
+        }
+        
+        useCases.set(useCase, (useCases.get(useCase) || 0) + 1);
       });
       
       return Array.from(useCases.entries()).map(([name, count]) => ({ name, count }));
