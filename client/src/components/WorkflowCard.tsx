@@ -524,7 +524,7 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
     }
     
     // Add specific integration steps for each system
-    integrations.forEach((integration, index) => {
+    integrations.forEach((integration: string, index: number) => {
       const integrationStep = createIntegrationStep(integration, mainAction, stepId++);
       steps.push(integrationStep);
     });
