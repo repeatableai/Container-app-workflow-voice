@@ -526,16 +526,71 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
             stepType = "process";
           }
           
+          // Create dynamic positioning based on workflow complexity and step count
+          const totalSteps = workflowJSON.workflow_steps.length;
+          const stepNumber = step.step || index + 1;
+          
+          // Dynamic layout calculations
+          let x, y;
+          if (totalSteps <= 3) {
+            // Linear horizontal layout for simple workflows
+            x = 50 + (index * 220);
+            y = 120;
+          } else if (totalSteps <= 6) {
+            // Two-row layout for medium workflows
+            const stepsPerRow = Math.ceil(totalSteps / 2);
+            const row = Math.floor(index / stepsPerRow);
+            const col = index % stepsPerRow;
+            x = 50 + (col * 200);
+            y = 80 + (row * 140);
+          } else {
+            // Grid layout for complex workflows
+            const cols = Math.min(4, Math.ceil(Math.sqrt(totalSteps)));
+            const row = Math.floor(index / cols);
+            const col = index % cols;
+            x = 50 + (col * 180);
+            y = 60 + (row * 130);
+          }
+          
+          // Add visual variation based on step type
+          if (isDecision) {
+            x += 20; y -= 10;
+          } else if (isManual) {
+            x -= 15; y += 15;
+          } else if (isIntegration) {
+            x += 10; y -= 5;
+          }
+          
+          // Intelligent step name formatting
+          let cleanName = '';
+          if (step.action) {
+            const actionWords = step.action.split('_');
+            if (actionWords.length <= 2) {
+              cleanName = step.action.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+            } else {
+              // Use first two words for longer actions
+              cleanName = actionWords.slice(0, 2).join(' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+            }
+          } else {
+            cleanName = `Step ${stepNumber}`;
+          }
+          
+          // Ensure clean names aren't too long
+          if (cleanName.length > 15) {
+            cleanName = cleanName.substring(0, 13) + '...';
+          }
+
           return {
-            id: step.step || index + 1,
-            name: step.action?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || `Step ${index + 1}`,
+            id: stepNumber,
+            name: cleanName,
             description: step.description || step.action || "Process step",
             type: stepType,
-            x: 50 + (index * 160),
-            y: 100 + ((index % 2) * 80),
+            x,
+            y,
             isDecision,
             isManual,
-            isIntegration
+            isIntegration,
+            originalAction: step.action // Keep for debugging
           };
         });
         
