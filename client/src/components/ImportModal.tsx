@@ -36,6 +36,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
   
   // Bulk URL import states
   const [bulkUrls, setBulkUrls] = useState('');
+  const [bulkCancelRef, setBulkCancelRef] = useState<{cancelled: boolean}>({ cancelled: false });
   const [bulkResults, setBulkResults] = useState<{
     successful: Array<{url: string, title: string}>;
     failed: Array<{url: string, error: string}>;
@@ -43,22 +44,24 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
     currentUrl: string;
     progress: number;
     total: number;
+    duplicates: Array<string>;
   }>({
     successful: [],
     failed: [],
     processing: false,
     currentUrl: '',
     progress: 0,
-    total: 0
+    total: 0,
+    duplicates: []
   });
 
   // Bulk URL processing function
   const handleBulkURLImport = async () => {
-    const urls = bulkUrls.split('\n')
+    const allUrls = bulkUrls.split('\n')
       .map(url => url.trim())
       .filter(url => url && url.startsWith('http'));
     
-    if (urls.length === 0) {
+    if (allUrls.length === 0) {
       toast({
         title: "No valid URLs",
         description: "Please enter at least one valid URL starting with http:// or https://",
@@ -67,7 +70,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       return;
     }
 
-    if (urls.length > 50) {
+    if (allUrls.length > 50) {
       toast({
         title: "Too many URLs",
         description: "Maximum 50 URLs allowed for bulk import",
@@ -76,14 +79,38 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       return;
     }
 
-    // Reset results and start processing
+    // Remove duplicates
+    const urls = [...new Set(allUrls)];
+    const duplicates = allUrls.filter((url, index) => allUrls.indexOf(url) !== index);
+
+    // Check for existing containers to avoid duplicates
+    let existingContainers: any[] = [];
+    try {
+      const response = await apiRequest('/api/containers');
+      if (response.ok) {
+        existingContainers = await response.json();
+      }
+    } catch (error) {
+      console.warn('Could not fetch existing containers for deduplication:', error);
+    }
+
+    const existingUrls = existingContainers
+      .map(c => c.originalUrl)
+      .filter(Boolean);
+    
+    const urlsToSkip = urls.filter(url => existingUrls.includes(url));
+    const urlsToProcess = urls.filter(url => !existingUrls.includes(url));
+
+    // Reset cancellation and results, start processing
+    setBulkCancelRef({ cancelled: false });
     setBulkResults({
       successful: [],
       failed: [],
       processing: true,
       currentUrl: '',
       progress: 0,
-      total: urls.length
+      total: urlsToProcess.length,
+      duplicates: [...duplicates, ...urlsToSkip]
     });
 
     setIsImporting(true);
@@ -94,13 +121,38 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         failed: [] as Array<{url: string, error: string}>
       };
 
+      if (urlsToProcess.length === 0) {
+        setBulkResults(prev => ({ ...prev, processing: false }));
+        toast({
+          title: "No new URLs to process",
+          description: `All URLs are duplicates or already exist. Skipped ${duplicates.length + urlsToSkip.length} URLs.`,
+          variant: "default",
+        });
+        setIsImporting(false);
+        return;
+      }
+
       // Process URLs in batches of 3 for better performance
       const batchSize = 3;
-      for (let i = 0; i < urls.length; i += batchSize) {
-        const batch = urls.slice(i, i + batchSize);
+      for (let i = 0; i < urlsToProcess.length; i += batchSize) {
+        // Check for cancellation
+        if (bulkCancelRef.cancelled) {
+          setBulkResults(prev => ({ ...prev, processing: false, currentUrl: '' }));
+          toast({
+            title: "Import cancelled",
+            description: `Cancelled at ${results.successful.length} successful imports`,
+            variant: "default",
+          });
+          setIsImporting(false);
+          return;
+        }
+
+        const batch = urlsToProcess.slice(i, i + batchSize);
         
         // Process batch in parallel
         const batchPromises = batch.map(async (url) => {
+          if (bulkCancelRef.cancelled) return;
+          
           setBulkResults(prev => ({ ...prev, currentUrl: url }));
           
           try {
@@ -112,7 +164,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
             });
 
             if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              const errorType = response.status === 404 ? 'URL not found' : 
+                              response.status === 403 ? 'Access denied' :
+                              response.status >= 500 ? 'Server error' : 'HTTP error';
+              throw new Error(`${errorType} (${response.status}): ${response.statusText}`);
             }
 
             const containerData = await response.json();
@@ -132,31 +187,37 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
               throw new Error(`Failed to create container: ${createResponse.statusText}`);
             }
 
-            results.successful.push({
-              url,
-              title: containerData.name || containerData.title || 'Unnamed Container'
-            });
+            if (!bulkCancelRef.cancelled) {
+              results.successful.push({
+                url,
+                title: containerData.name || containerData.title || 'Unnamed Container'
+              });
+            }
 
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            results.failed.push({ url, error: errorMessage });
+            if (!bulkCancelRef.cancelled) {
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+              results.failed.push({ url, error: errorMessage });
+            }
           }
 
           // Update progress
-          setBulkResults(prev => ({
-            ...prev,
-            progress: prev.progress + 1,
-            successful: [...results.successful],
-            failed: [...results.failed]
-          }));
+          if (!bulkCancelRef.cancelled) {
+            setBulkResults(prev => ({
+              ...prev,
+              progress: prev.progress + 1,
+              successful: [...results.successful],
+              failed: [...results.failed]
+            }));
+          }
         });
 
         // Wait for current batch to complete
         await Promise.all(batchPromises);
         
         // Brief pause between batches to avoid overwhelming servers
-        if (i + batchSize < urls.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        if (i + batchSize < urlsToProcess.length && !bulkCancelRef.cancelled) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
 
@@ -169,9 +230,10 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         failed: results.failed
       }));
 
+      const skippedCount = duplicates.length + urlsToSkip.length;
       toast({
         title: "Bulk import completed",
-        description: `Successfully imported ${results.successful.length} containers. ${results.failed.length} failed.`,
+        description: `Successfully imported ${results.successful.length} containers. ${results.failed.length} failed. ${skippedCount > 0 ? `${skippedCount} skipped.` : ''}`,
         variant: results.failed.length === 0 ? "default" : "destructive",
       });
 
@@ -1220,6 +1282,12 @@ Supports up to 50 URLs at once.`}
                   </span>
                   <span>Limit: 50 URLs</span>
                 </div>
+                
+                {bulkResults.duplicates.length > 0 && !bulkResults.processing && (
+                  <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-2 rounded border">
+                    ⚠️ {bulkResults.duplicates.length} duplicate or existing URLs will be skipped
+                  </div>
+                )}
               </div>
 
               {/* Progress Section */}
@@ -1260,6 +1328,17 @@ Supports up to 50 URLs at once.`}
                       </span>
                     </div>
                   </div>
+                  
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setBulkCancelRef({ cancelled: true });
+                    }}
+                    className="w-full mt-2"
+                  >
+                    Cancel Import
+                  </Button>
                 </div>
               )}
 
