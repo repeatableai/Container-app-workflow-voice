@@ -630,21 +630,19 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       // Validate URL
       new URL(url); // This will throw if invalid
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
+      // Use server-side proxy to bypass CORS restrictions
+      const response = await apiRequest('POST', '/api/fetch-url', { url });
+      const proxyResponse = await response.json();
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch from URL: ${response.status} ${response.statusText}`);
+      if (!proxyResponse.success) {
+        throw new Error(proxyResponse.message || 'Failed to fetch URL');
       }
       
-      const contentType = response.headers.get('content-type') || '';
+      const { content, contentType } = proxyResponse;
       
       if (contentType.includes('application/json')) {
         // Handle JSON data URLs
-        const data = await response.json();
+        const data = JSON.parse(content);
         const containersData = Array.isArray(data) ? data : (data.containers || [data]);
         
         let createdCount = 0;
@@ -676,7 +674,7 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
         });
       } else {
         // Handle HTML/webpage URLs with intelligent analysis
-        const html = await response.text();
+        const html = content;
         const analysis = analyzeAppContent(html, url);
         
         const containerToCreate = {
@@ -707,14 +705,21 @@ export default function ImportModal({ open, onOpenChange, type, activeTab = 'app
       let errorMessage = "URL import failed. Please check the URL and try again.";
       
       // Provide specific error messages for common issues
-      if (error.message?.includes('Failed to fetch') || error.name === 'TypeError') {
-        errorMessage = "Unable to access this URL due to security restrictions (CORS). Try importing the JSON data directly instead, or use a publicly accessible URL.";
+      if (error.message?.includes('Failed to fetch URL')) {
+        // Extract status code if available
+        if (error.message?.includes('404')) {
+          errorMessage = "The URL was not found (404). Please check the URL and try again.";
+        } else if (error.message?.includes('403')) {
+          errorMessage = "Access to this URL is forbidden (403). The site may require authentication.";
+        } else if (error.message?.includes('500')) {
+          errorMessage = "The server at this URL is experiencing issues (500). Try again later.";
+        } else {
+          errorMessage = "The URL could not be fetched. Please check if the URL is correct and accessible.";
+        }
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = "The URL took too long to respond. Please try a different URL or try again later.";
       } else if (error.message?.includes('Invalid URL')) {
         errorMessage = "Please enter a valid URL (e.g., https://example.com)";
-      } else if (error.message?.includes('404') || error.message?.includes('Not Found')) {
-        errorMessage = "The URL was not found. Please check the URL and try again.";
-      } else if (error.message?.includes('403') || error.message?.includes('Forbidden')) {
-        errorMessage = "Access to this URL is forbidden. Try a different URL or use JSON import instead.";
       }
       
       toast({

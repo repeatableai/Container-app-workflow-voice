@@ -1112,7 +1112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         headers: Object.fromEntries(response.headers.entries())
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[FETCH-URL] Error fetching URL:`, error);
       
       if (error.name === 'AbortError') {
