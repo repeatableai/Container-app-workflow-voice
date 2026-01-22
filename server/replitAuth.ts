@@ -110,9 +110,53 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
+      successReturnToOrRedirect: "/auth-success",
       failureRedirect: "/api/login",
     })(req, res, next);
+  });
+
+  // Custom success handler that ensures window stays open and syncs auth state
+  app.get("/auth-success", (req, res) => {
+    // Check if user is authenticated
+    if (req.isAuthenticated()) {
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Authentication Successful</title>
+            <script>
+              // Notify other tabs/windows that auth succeeded
+              try {
+                localStorage.setItem('replit_auth_success', Date.now().toString());
+                // Trigger storage event manually for same-tab listeners
+                window.dispatchEvent(new StorageEvent('storage', {
+                  key: 'replit_auth_success',
+                  newValue: Date.now().toString(),
+                  storageArea: localStorage
+                }));
+              } catch (e) {
+                console.log('LocalStorage not available:', e);
+              }
+              
+              // Redirect to main app (ensures window stays open)
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 100);
+            </script>
+          </head>
+          <body>
+            <div style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui;">
+              <div style="text-align: center;">
+                <h1>Authentication Successful!</h1>
+                <p>Redirecting to your app...</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+    } else {
+      res.redirect("/api/login");
+    }
   });
 
   app.get("/api/logout", (req, res) => {
