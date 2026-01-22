@@ -108,7 +108,47 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  // Intercept callback immediately to prevent window closing
+  app.get("/api/callback", (req, res) => {
+    // Immediately send a page that prevents closing BEFORE passport processes
+    // This intercepts Replit's redirect and prevents window.close()
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Processing authentication...</title>
+          <script>
+            // CRITICAL: Prevent window closing IMMEDIATELY
+            (function() {
+              const preventClose = function() {
+                window.close = function() {
+                  console.log('Window close prevented');
+                  return false;
+                };
+                if (window.self && window.self.close) {
+                  window.self.close = function() { return false; };
+                }
+              };
+              preventClose();
+              // Keep preventing it
+              setInterval(preventClose, 100);
+            })();
+            
+            // Now redirect to the actual passport callback handler
+            // Pass all query parameters
+            const params = new URLSearchParams(window.location.search);
+            window.location.replace('/api/callback-handler?' + params.toString());
+          </script>
+        </head>
+        <body>
+          <p>Processing authentication...</p>
+        </body>
+      </html>
+    `);
+  });
+
+  // Handler for the actual passport authentication
+  app.get("/api/callback-handler", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/auth-success",
       failureRedirect: "/api/login",
@@ -138,10 +178,24 @@ export async function setupAuth(app: Express) {
                 console.log('LocalStorage not available:', e);
               }
               
-              // Redirect to main app (ensures window stays open)
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 100);
+              // Prevent closing
+              window.close = function() { return false; };
+              if (window.self) window.self.close = function() { return false; };
+              
+              // If opened from another window, communicate back
+              if (window.opener) {
+                try {
+                  window.opener.postMessage({ 
+                    type: 'REPLIT_AUTH_SUCCESS',
+                    timestamp: Date.now()
+                  }, '*');
+                } catch (e) {
+                  console.log('PostMessage error:', e);
+                }
+              }
+              
+              // Redirect immediately using replace (prevents back button issues)
+              window.location.replace('/');
             </script>
           </head>
           <body>
