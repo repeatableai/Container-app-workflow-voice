@@ -264,7 +264,8 @@ export default function AppCard({ container, onView, onDelete, onEdit, canDelete
                     src={`/api/proxy/${container.id}`}
                     className="w-full h-full border-0"
                     title={container.title}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals"
+                    allow="microphone; camera; display-capture; screen-wake-lock; clipboard-write; clipboard-read"
                     onLoad={handleIframeLoad}
                     onError={handleIframeError}
                     data-testid="container-iframe"

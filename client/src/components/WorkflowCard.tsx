@@ -1216,7 +1216,8 @@ export default function WorkflowCard({ container, onView, onDelete, onEdit, canD
                 src={container.url}
                 className="w-full h-full border-0"
                 title={container.title}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals"
+                allow="microphone; camera; display-capture; screen-wake-lock; clipboard-write; clipboard-read"
                 data-testid="container-iframe"
               />
             ) : (
